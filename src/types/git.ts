@@ -1,0 +1,91 @@
+export type FileStatus =
+  | "added"
+  | "modified"
+  | "deleted"
+  | "renamed"
+  | "copied"
+  | "untracked"
+  | "conflicted"
+  | "staged"
+  | "partially_staged";
+
+export type StagedStatus = "unstaged" | "staged" | "partially_staged";
+
+export interface GitFile {
+  path: string;
+  oldPath?: string;
+  status: FileStatus;
+  stagedStatus: StagedStatus;
+  additions: number;
+  deletions: number;
+}
+
+export interface DiffHunk {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  header: string;
+  lines: DiffLine[];
+}
+
+export interface DiffLine {
+  type: "add" | "delete" | "context";
+  content: string;
+  oldLineNumber?: number;
+  newLineNumber?: number;
+}
+
+export interface FileDiff {
+  path: string;
+  oldPath?: string;
+  additions: number;
+  deletions: number;
+  hunks: DiffHunk[];
+  isBinary: boolean;
+}
+
+export interface CommitInfo {
+  hash: string;
+  shortHash: string;
+  message: string;
+  author: string;
+  authorEmail: string;
+  date: string;
+  refs: string[];
+  parents: string[];
+}
+
+export interface Branch {
+  name: string;
+  isCurrent: boolean;
+  isRemote: boolean;
+  tracking?: string;
+  ahead?: number;
+  behind?: number;
+}
+
+export interface Remote {
+  name: string;
+  url: string;
+  type: "fetch" | "push";
+}
+
+export interface RepoInfo {
+  path: string;
+  name: string;
+  currentBranch: string;
+  isGitRepo: boolean;
+  remotes: Remote[];
+}
+
+export interface StatusResult {
+  branch: string;
+  files: GitFile[];
+  ahead: number;
+  behind: number;
+  staged: number;
+  unstaged: number;
+  untracked: number;
+  conflicted: number;
+}
