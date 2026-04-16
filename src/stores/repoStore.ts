@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { StatusResult, Branch, CommitInfo } from "../types/git";
+import type { StatusResult, Branch, CommitInfo, GitFile } from "../types/git";
 import * as api from "../services/api";
 
 const RECENT_REPOS_KEY = "quanta-recent-repos";
@@ -20,6 +20,30 @@ function rememberRecentRepo(path: string) {
   } catch {}
 }
 
+function buildStatusSignature(status: StatusResult | null) {
+  if (!status) return null;
+
+  return JSON.stringify({
+    branch: status.branch,
+    ahead: status.ahead,
+    behind: status.behind,
+    staged: status.staged,
+    unstaged: status.unstaged,
+    untracked: status.untracked,
+    conflicted: status.conflicted,
+    files: [...status.files]
+      .sort((left, right) => left.path.localeCompare(right.path))
+      .map((file: GitFile) => ({
+        path: file.path,
+        oldPath: file.oldPath || "",
+        status: file.status,
+        stagedStatus: file.stagedStatus,
+        additions: file.additions,
+        deletions: file.deletions,
+      })),
+  });
+}
+
 interface RepoStore {
   repoPath: string | null;
   status: StatusResult | null;
@@ -27,10 +51,12 @@ interface RepoStore {
   commits: CommitInfo[];
   loading: boolean;
   error: string | null;
+  lastStatusUpdateAt: number | null;
+  lastChangeDetectedAt: number | null;
 
   setRepo: (path: string) => void;
   refresh: () => Promise<void>;
-  refreshStatus: () => Promise<void>;
+  refreshStatus: () => Promise<boolean>;
   refreshBranches: () => Promise<void>;
   refreshLog: () => Promise<void>;
   clearError: () => void;
@@ -43,12 +69,22 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
   commits: [],
   loading: false,
   error: null,
+  lastStatusUpdateAt: null,
+  lastChangeDetectedAt: null,
 
   setRepo: (path) => {
     if (path) {
       rememberRecentRepo(path);
     }
-    set({ repoPath: path, status: null, branches: [], commits: [], error: null });
+    set({
+      repoPath: path,
+      status: null,
+      branches: [],
+      commits: [],
+      error: null,
+      lastStatusUpdateAt: null,
+      lastChangeDetectedAt: null,
+    });
     const state = get();
     if (state.refresh) state.refresh();
   },
@@ -73,12 +109,24 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
 
   refreshStatus: async () => {
     const { repoPath } = get();
-    if (!repoPath) return;
+    if (!repoPath) return false;
     try {
+      const previousStatus = get().status;
       const status = await api.getStatus(repoPath);
-      set({ status });
+      const previousSignature = buildStatusSignature(previousStatus);
+      const nextSignature = buildStatusSignature(status);
+      const hasChanged = previousSignature !== null && previousSignature !== nextSignature;
+
+      set({
+        status,
+        lastStatusUpdateAt: Date.now(),
+        lastChangeDetectedAt: hasChanged ? Date.now() : get().lastChangeDetectedAt,
+      });
+
+      return hasChanged;
     } catch (err: any) {
       set({ error: err.message });
+      return false;
     }
   },
 

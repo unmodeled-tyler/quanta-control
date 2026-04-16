@@ -56,6 +56,29 @@ export interface CommitInfo {
   parents: string[];
 }
 
+export interface CommitActivityDay {
+  date: string;
+  count: number;
+}
+
+export interface CommitActivitySummary {
+  totalCommits: number;
+  activeDays: number;
+  currentStreak: number;
+  longestStreak: number;
+  busiestDay: CommitActivityDay | null;
+  lastWeekCommits: number;
+}
+
+export interface CommitActivity {
+  author: {
+    name: string;
+    email: string;
+  };
+  days: CommitActivityDay[];
+  summary: CommitActivitySummary;
+}
+
 export interface Branch {
   name: string;
   isCurrent: boolean;

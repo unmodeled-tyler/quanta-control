@@ -1,22 +1,27 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   GitBranch,
   FileText,
   GitCommit,
   History,
+  ChartColumn,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
   Settings,
-  FolderOpen,
 } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 
-export type View = "status" | "diff" | "branches" | "log" | "settings";
+export type View = "status" | "diff" | "branches" | "log" | "stats" | "settings";
+
+const SIDEBAR_COLLAPSED_KEY = "quanta-sidebar-collapsed";
 
 const NAV_ITEMS: Array<{ id: Exclude<View, "settings">; icon: typeof GitBranch; label: string }> = [
   { id: "status", icon: FileText, label: "Changes" },
   { id: "diff", icon: GitCommit, label: "Diff" },
   { id: "branches", icon: GitBranch, label: "Branches" },
   { id: "log", icon: History, label: "History" },
+  { id: "stats", icon: ChartColumn, label: "Stats" },
 ];
 
 export function MainLayout({
@@ -29,14 +34,60 @@ export function MainLayout({
   onViewChange: (view: View) => void;
 }) {
   const { repoPath, status, loading, refresh } = useRepoStore();
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
+      if (stored === "true") {
+        setIsCollapsed(true);
+      }
+    } catch {}
+  }, []);
+
+  const toggleCollapsed = () => {
+    setIsCollapsed((value) => {
+      const next = !value;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100">
-      <nav className="w-48 flex-shrink-0 border-r border-zinc-800 bg-zinc-950 flex flex-col">
-        <div className="p-3 border-b border-zinc-800">
-          <div className="flex items-center gap-2 text-sm font-semibold text-zinc-300">
-            <GitBranch className="w-4 h-4 text-emerald-400" />
-            <span>Quanta Control</span>
+      <nav
+        className={`flex flex-shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 transition-[width] duration-200 ${
+          isCollapsed ? "w-16" : "w-48"
+        }`}
+      >
+        <div className="border-b border-zinc-800 p-3">
+          <div
+            className={`flex items-center ${
+              isCollapsed ? "flex-col justify-center gap-3" : "justify-between gap-2"
+            }`}
+          >
+            <div
+              className={`flex items-center text-sm font-semibold text-zinc-300 ${
+                isCollapsed ? "justify-center" : "gap-2"
+              }`}
+              title="Quanta Control"
+            >
+              <GitBranch className="h-4 w-4 text-emerald-400" />
+              {!isCollapsed && <span>Quanta Control</span>}
+            </div>
+            <button
+              onClick={toggleCollapsed}
+              className="rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-300"
+              title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isCollapsed ? (
+                <PanelLeftOpen className="h-4 w-4" />
+              ) : (
+                <PanelLeftClose className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
 
@@ -45,10 +96,13 @@ export function MainLayout({
             <button
               onClick={refresh}
               disabled={loading}
-              className="w-full flex items-center gap-2 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+              className={`w-full text-xs text-zinc-400 transition-colors hover:text-zinc-200 ${
+                isCollapsed ? "flex justify-center" : "flex items-center gap-2"
+              }`}
+              title={status?.branch || "Refresh"}
             >
-              <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />
-              <span className="truncate">{status?.branch || "..."}</span>
+              <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+              {!isCollapsed && <span className="truncate">{status?.branch || "..."}</span>}
             </button>
           </div>
         )}
@@ -58,14 +112,15 @@ export function MainLayout({
             <button
               key={id}
               onClick={() => onViewChange(id)}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+              title={label}
+              className={`w-full rounded-md px-3 py-2 text-sm transition-colors ${
                 currentView === id
                   ? "bg-zinc-800 text-zinc-100"
                   : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
+              } ${isCollapsed ? "flex justify-center" : "flex items-center gap-2"}`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              {!isCollapsed && label}
             </button>
           ))}
         </div>
@@ -73,14 +128,15 @@ export function MainLayout({
         <div className="p-2 border-t border-zinc-800">
           <button
             onClick={() => onViewChange("settings")}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+            title="Settings"
+            className={`w-full rounded-md px-3 py-2 text-sm transition-colors ${
               currentView === "settings"
                 ? "bg-zinc-800 text-zinc-100"
                 : "text-zinc-500 hover:text-zinc-300"
-            }`}
+            } ${isCollapsed ? "flex justify-center" : "flex items-center gap-2"}`}
           >
-            <Settings className="w-4 h-4" />
-            Settings
+            <Settings className="h-4 w-4 flex-shrink-0" />
+            {!isCollapsed && "Settings"}
           </button>
         </div>
       </nav>

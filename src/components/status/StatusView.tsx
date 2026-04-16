@@ -2,6 +2,7 @@ import {
   Plus,
   Minus,
   RefreshCw,
+  Sparkles,
   ChevronDown,
   ChevronRight,
   Trash2,
@@ -9,7 +10,7 @@ import {
   File,
   Folder,
 } from "lucide-react";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRepoStore } from "../../stores/repoStore";
 import * as api from "../../services/api";
@@ -208,9 +209,17 @@ export function StatusView({
   onSelectFile: (file: GitFile | null) => void;
   selectedFile: GitFile | null;
 }) {
-  const { repoPath, status, refreshStatus } = useRepoStore();
+  const { repoPath, status, refreshStatus, lastStatusUpdateAt, lastChangeDetectedAt } = useRepoStore();
   const [stagedOpen, setStagedOpen] = useState(true);
   const [unstagedOpen, setUnstagedOpen] = useState(true);
+  const [showChangeNotice, setShowChangeNotice] = useState(false);
+
+  useEffect(() => {
+    if (!lastChangeDetectedAt) return;
+    setShowChangeNotice(true);
+    const timer = window.setTimeout(() => setShowChangeNotice(false), 5000);
+    return () => window.clearTimeout(timer);
+  }, [lastChangeDetectedAt]);
 
   if (!repoPath || !status) return null;
 
@@ -229,8 +238,19 @@ export function StatusView({
           <span className="text-xs text-zinc-500">
             {status.files.length} file{status.files.length !== 1 ? "s" : ""}
           </span>
+          {showChangeNotice && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+              <Sparkles className="h-3 w-3" />
+              Change detected
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          {lastStatusUpdateAt && (
+            <span className="hidden text-[11px] text-zinc-500 sm:inline">
+              Updated {new Date(lastStatusUpdateAt).toLocaleTimeString()}
+            </span>
+          )}
           <button
             onClick={() => api.stageFiles(repoPath).then(refreshStatus)}
             className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors"

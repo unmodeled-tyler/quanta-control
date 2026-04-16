@@ -166,6 +166,139 @@ router.get("/log", async (req, res, next) => {
   }
 });
 
+router.get("/stats", async (req, res, next) => {
+  try {
+    const repo = req.query.repo as string;
+    const days = Math.min(parseInt(req.query.days as string, 10) || 365, 730);
+
+    if (!repo) {
+      return res.status(400).json({ error: "repo path required" });
+    }
+
+    const explicitEmail = String(req.query.email || "").trim();
+    const explicitName = String(req.query.name || "").trim();
+
+    const [emailResult, nameResult] = await Promise.all([
+      explicitEmail
+        ? Promise.resolve({ stdout: explicitEmail, exitCode: 0 })
+        : gitInRepo(repo, ["config", "--get", "user.email"]),
+      explicitName
+        ? Promise.resolve({ stdout: explicitName, exitCode: 0 })
+        : gitInRepo(repo, ["config", "--get", "user.name"]),
+    ]);
+
+    const authorEmail = explicitEmail || (emailResult.exitCode === 0 ? emailResult.stdout.trim() : "");
+    const authorName = explicitName || (nameResult.exitCode === 0 ? nameResult.stdout.trim() : "");
+
+    if (!authorEmail && !authorName) {
+      return res.status(400).json({ error: "No Git identity configured for stats" });
+    }
+
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - (days - 1));
+    const sinceString = since.toISOString().slice(0, 10);
+
+    const format = "%ad|%ae|%an";
+    const result = await gitInRepo(repo, [
+      "log",
+      "--all",
+      `--since=${sinceString}`,
+      "--date=short",
+      `--format=${format}`,
+    ]);
+
+    if (result.exitCode !== 0) {
+      return res.status(500).json({ error: result.stderr });
+    }
+
+    const matchesIdentity = (lineEmail: string, lineName: string) => {
+      const emailMatches = authorEmail
+        ? lineEmail.trim().toLowerCase() === authorEmail.toLowerCase()
+        : false;
+      const nameMatches = authorName
+        ? lineName.trim().toLowerCase() === authorName.toLowerCase()
+        : false;
+
+      if (authorEmail && authorName) {
+        return emailMatches || nameMatches;
+      }
+
+      return emailMatches || nameMatches;
+    };
+
+    const counts = new Map<string, number>();
+
+    for (const line of result.stdout.split("\n").filter(Boolean)) {
+      const [date, email, name] = line.split("|");
+      if (!date || !email || !name) continue;
+      if (!matchesIdentity(email, name)) continue;
+      counts.set(date, (counts.get(date) || 0) + 1);
+    }
+
+    const dayList: Array<{ date: string; count: number }> = [];
+    for (let offset = 0; offset < days; offset += 1) {
+      const current = new Date(since);
+      current.setDate(since.getDate() + offset);
+      const date = current.toISOString().slice(0, 10);
+      dayList.push({ date, count: counts.get(date) || 0 });
+    }
+
+    const totalCommits = dayList.reduce((sum, day) => sum + day.count, 0);
+    const activeDays = dayList.filter((day) => day.count > 0).length;
+    const busiestDay = dayList.reduce<{ date: string; count: number } | null>(
+      (best, day) => {
+        if (day.count === 0) return best;
+        if (!best || day.count > best.count) {
+          return day;
+        }
+        return best;
+      },
+      null,
+    );
+
+    let currentStreak = 0;
+    for (let index = dayList.length - 1; index >= 0; index -= 1) {
+      if (dayList[index]?.count) {
+        currentStreak += 1;
+      } else {
+        break;
+      }
+    }
+
+    let longestStreak = 0;
+    let runningStreak = 0;
+    for (const day of dayList) {
+      if (day.count > 0) {
+        runningStreak += 1;
+        longestStreak = Math.max(longestStreak, runningStreak);
+      } else {
+        runningStreak = 0;
+      }
+    }
+
+    const lastWeekCommits = dayList.slice(-7).reduce((sum, day) => sum + day.count, 0);
+
+    res.json({
+      author: {
+        name: authorName,
+        email: authorEmail,
+      },
+      days: dayList,
+      summary: {
+        totalCommits,
+        activeDays,
+        currentStreak,
+        longestStreak,
+        busiestDay,
+        lastWeekCommits,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get("/branches", async (req, res, next) => {
   try {
     const repo = req.query.repo as string;

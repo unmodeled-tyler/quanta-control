@@ -1,4 +1,11 @@
-import type { StatusResult, FileDiff, CommitInfo, Branch, Remote } from "../types/git";
+import type {
+  StatusResult,
+  FileDiff,
+  CommitInfo,
+  Branch,
+  Remote,
+  CommitActivity,
+} from "../types/git";
 import type { SystemStatus } from "../types/system";
 
 const GIT_BASE = "/api/git";
@@ -53,6 +60,17 @@ export function getLog(repo: string, count = 50, branch?: string) {
   const params = new URLSearchParams({ repo, count: String(count) });
   if (branch) params.set("branch", branch);
   return api<CommitInfo[]>(`${GIT_BASE}/log?${params}`);
+}
+
+export function getCommitActivity(
+  repo: string,
+  options?: { email?: string; name?: string; days?: number },
+) {
+  const params = new URLSearchParams({ repo });
+  if (options?.email) params.set("email", options.email);
+  if (options?.name) params.set("name", options.name);
+  if (options?.days) params.set("days", String(options.days));
+  return api<CommitActivity>(`${GIT_BASE}/stats?${params}`);
 }
 
 export function getBranches(repo: string) {

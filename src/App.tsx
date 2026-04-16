@@ -10,16 +10,39 @@ import { BranchView } from "./components/branches/BranchView";
 import { LogView } from "./components/log/LogView";
 import { RemoteActions } from "./components/remote/RemoteActions";
 import { SettingsView } from "./components/settings/SettingsView";
+import { StatsView } from "./components/stats/StatsView";
+import { useSettingsStore } from "./stores/settingsStore";
 import type { GitFile } from "./types/git";
 
 export default function App() {
   const { repoPath, setRepo } = useRepoStore();
+  const { settings } = useSettingsStore();
   const [view, setView] = useState<View>("status");
   const [selectedFile, setSelectedFile] = useState<GitFile | null>(null);
 
   useEffect(() => {
     setSelectedFile(null);
   }, [repoPath]);
+
+  useEffect(() => {
+    if (!repoPath || !settings.autoRefresh) return;
+
+    const intervalMs = Math.max(settings.autoRefreshInterval, 5) * 1000;
+
+    const poll = async () => {
+      const store = useRepoStore.getState();
+      const hasChanged = await store.refreshStatus();
+      if (hasChanged) {
+        await Promise.all([store.refreshBranches(), store.refreshLog()]);
+      }
+    };
+
+    const timer = window.setInterval(() => {
+      void poll();
+    }, intervalMs);
+
+    return () => window.clearInterval(timer);
+  }, [repoPath, settings.autoRefresh, settings.autoRefreshInterval]);
 
   if (!repoPath) {
     return <RepoOpener onSelect={setRepo} />;
@@ -80,6 +103,12 @@ export default function App() {
           {view === "log" && (
             <div className="flex-1">
               <LogView />
+            </div>
+          )}
+
+          {view === "stats" && (
+            <div className="flex-1">
+              <StatsView onOpenSettings={() => setView("settings")} />
             </div>
           )}
 
