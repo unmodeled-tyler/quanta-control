@@ -17,6 +17,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
 
   if (!repoPath || !status) return null;
 
+  const hasChanges = status.files.length > 0;
   const hasStaged =
     status.files.filter(
       (f) => f.stagedStatus === "staged" || f.stagedStatus === "partially_staged",
@@ -36,10 +37,13 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
   };
 
   const handleCommit = async () => {
-    if (!message.trim() || !hasStaged) return;
+    if (!message.trim() || !hasChanges) return;
 
     setCommitting(true);
     try {
+      if (!hasStaged) {
+        await api.stageFiles(repoPath);
+      }
       await api.commit(repoPath, message.trim());
       setMessage("");
       await Promise.all([refreshStatus(), refreshLog()]);
@@ -66,7 +70,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
   };
 
   return (
-    <div className="border-t border-zinc-800 bg-zinc-950">
+    <div className="h-full overflow-y-auto border-t border-zinc-800 bg-zinc-950">
       <div className="p-3">
         <textarea
           value={message}
@@ -84,7 +88,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
         <div className="flex items-center gap-2 mt-2">
           <button
             onClick={handleCommit}
-            disabled={!message.trim() || !hasStaged || committing}
+            disabled={!message.trim() || !hasChanges || committing}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 rounded-md text-sm font-medium transition-colors"
           >
             {committing ? (
@@ -92,12 +96,14 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
             ) : (
               <GitCommit className="w-3.5 h-3.5" />
             )}
-            Commit
+            {hasStaged ? "Commit" : "Commit All"}
           </button>
           <span className="text-xs text-zinc-600">
-            {hasStaged
+            {!hasChanges
+              ? "No changes to commit"
+              : hasStaged
               ? "Enter to commit"
-              : "Stage changes to commit"}
+              : "Enter to stage and commit all changes"}
           </span>
         </div>
       </div>
