@@ -2,7 +2,7 @@
 # Quanta Control
 
 <img width="1484" height="1004" alt="quanta-control-1" src="https://github.com/user-attachments/assets/bd9cf9c7-edf0-4326-a56f-ed17443770b5" />
-<img width="1484" height="1004" alt="quanta-control-2" src="https://github.com/user-attachments/assets/07b3cf3b-8a99-4cf6-92c4-fb71c67a0432" />
+
 
 Quanta Control is a local-first Git workbench for people who want a focused desktop UI for day-to-day repository work without leaving the normal Git and GitHub tooling they already use.
 
