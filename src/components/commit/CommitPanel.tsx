@@ -6,7 +6,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import * as api from "../../services/api";
 
 export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
-  const { repoPath, status, refreshStatus, refreshLog } = useRepoStore();
+  const { repoPath, status } = useRepoStore();
   const { settings, updateSetting } = useSettingsStore();
   const [message, setMessage] = useState("");
   const [committing, setCommitting] = useState(false);
@@ -36,6 +36,15 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
     }
   };
 
+  const finalizeCommitFlow = useCallback(async () => {
+    await useRepoStore.getState().refresh();
+  }, []);
+
+  const handleDismissPushDialog = useCallback(() => {
+    setPushDialog(false);
+    void finalizeCommitFlow();
+  }, [finalizeCommitFlow]);
+
   const handleCommit = async () => {
     if (!message.trim() || !hasChanges) return;
 
@@ -46,7 +55,6 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
       }
       await api.commit(repoPath, message.trim());
       setMessage("");
-      await Promise.all([refreshStatus(), refreshLog()]);
       onCommitted();
 
       if (settings.autoPushOnCommit) {
@@ -115,7 +123,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
             dontAskAgain={dontAskAgain}
             onDontAskChange={setDontAskAgain}
             onPush={handlePushDialogYes}
-            onDismiss={() => setPushDialog(false)}
+            onDismiss={handleDismissPushDialog}
             yesRef={pushYesRef}
           />,
           document.body,
