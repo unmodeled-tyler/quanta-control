@@ -75,8 +75,3 @@ CLI launcher from the local checkout:
 npm run start:cli
 ```
 
-## Publish checklist
-
-- Initialize the repo and push it to GitHub.
-- Keep generated output (`dist`, `build`, `node_modules`) out of git; `.gitignore` now covers them.
-- Optionally add screenshots and release notes before making the repository public.
