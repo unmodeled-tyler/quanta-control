@@ -4,6 +4,10 @@ Quanta Control is a local-first Git workbench for people who want a focused desk
 
 It runs on your machine, talks to your repositories through the system `git` executable, and gives you a clean interface for reviewing changes, committing, switching branches, checking history, and working with remotes.
 
+I initially built this project for myself as a companion to AI coding tools such as OpenCode or Codex which don't natively support git source control like IDEs such as VS Code or Zed. 
+
+Quanta Control follows the same lightweight, low-fuss philosophy employed by CLI coding tools. 
+
 ## What it does
 
 Quanta Control is built around a few common Git workflows:
