@@ -89,6 +89,29 @@ router.get("/diff", async (req, res, next) => {
   }
 });
 
+router.get("/commit-diff", async (req, res, next) => {
+  try {
+    const { repo, commit } = req.query as Record<string, string>;
+    if (!repo) return res.status(400).json({ error: "repo path required" });
+    if (!commit) return res.status(400).json({ error: "commit hash required" });
+
+    const result = await gitInRepo(repo, [
+      "show",
+      "--format=",
+      "--no-color",
+      commit,
+    ]);
+    if (result.exitCode !== 0) {
+      return res.status(500).json({ error: result.stderr });
+    }
+
+    const diffs = parseDiff(result.stdout);
+    res.json(diffs);
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/stage", async (req, res, next) => {
   try {
     const { repo, files } = req.body;

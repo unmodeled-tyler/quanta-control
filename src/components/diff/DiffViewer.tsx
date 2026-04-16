@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useRepoStore } from "../../stores/repoStore";
 import * as api from "../../services/api";
 import type { FileDiff, DiffLine } from "../../types/git";
 
@@ -56,34 +55,21 @@ function DiffHunkView({
   );
 }
 
-export function DiffViewer({
-  repoPath,
-  filePath,
-  staged,
+export function DiffContent({
+  diffs,
+  loading = false,
+  loadingMessage = "Loading diff...",
+  emptyStateMessage = "Select a file to view diff",
 }: {
-  repoPath: string;
-  filePath: string | null;
-  staged?: boolean;
+  diffs: FileDiff[];
+  loading?: boolean;
+  loadingMessage?: string;
+  emptyStateMessage?: string;
 }) {
-  const [diffs, setDiffs] = useState<FileDiff[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!filePath) {
-      api.getDiff(repoPath, undefined, staged).then(setDiffs).catch(() => setDiffs([]));
-      return;
-    }
-    setLoading(true);
-    api.getDiff(repoPath, filePath, staged)
-      .then(setDiffs)
-      .catch(() => setDiffs([]))
-      .finally(() => setLoading(false));
-  }, [repoPath, filePath, staged]);
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-zinc-500">
-        Loading diff...
+        {loadingMessage}
       </div>
     );
   }
@@ -91,7 +77,7 @@ export function DiffViewer({
   if (diffs.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-zinc-600">
-        {filePath ? "No changes" : "Select a file to view diff"}
+        {emptyStateMessage}
       </div>
     );
   }
@@ -122,5 +108,47 @@ export function DiffViewer({
         </div>
       ))}
     </div>
+  );
+}
+
+export function DiffViewer({
+  repoPath,
+  filePath,
+  staged,
+  showAllWhenNoFile = true,
+  emptyStateMessage,
+}: {
+  repoPath: string;
+  filePath: string | null;
+  staged?: boolean;
+  showAllWhenNoFile?: boolean;
+  emptyStateMessage?: string;
+}) {
+  const [diffs, setDiffs] = useState<FileDiff[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!filePath) {
+      if (!showAllWhenNoFile) {
+        setDiffs([]);
+        setLoading(false);
+        return;
+      }
+      api.getDiff(repoPath, undefined, staged).then(setDiffs).catch(() => setDiffs([]));
+      return;
+    }
+    setLoading(true);
+    api.getDiff(repoPath, filePath, staged)
+      .then(setDiffs)
+      .catch(() => setDiffs([]))
+      .finally(() => setLoading(false));
+  }, [repoPath, filePath, staged]);
+
+  return (
+    <DiffContent
+      diffs={diffs}
+      loading={loading}
+      emptyStateMessage={filePath ? "No changes" : (emptyStateMessage || "Select a file to view diff")}
+    />
   );
 }

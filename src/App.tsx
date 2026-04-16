@@ -40,7 +40,7 @@ type DragState =
   | null;
 
 export default function App() {
-  const { repoPath, setRepo } = useRepoStore();
+  const { repoPath, setRepo, status } = useRepoStore();
   const { settings } = useSettingsStore();
   const [view, setView] = useState<View>("status");
   const [selectedFile, setSelectedFile] = useState<GitFile | null>(null);
@@ -52,6 +52,20 @@ export default function App() {
   useEffect(() => {
     setSelectedFile(null);
   }, [repoPath]);
+
+  useEffect(() => {
+    if (!status) return;
+
+    if (status.files.length === 0) {
+      setSelectedFile(null);
+      setView((currentView) => (currentView === "diff" ? "status" : currentView));
+      return;
+    }
+
+    if (selectedFile && !status.files.some((file) => file.path === selectedFile.path)) {
+      setSelectedFile(null);
+    }
+  }, [selectedFile, status]);
 
   useEffect(() => {
     if (!repoPath || !settings.autoRefresh) return;
@@ -179,28 +193,36 @@ export default function App() {
                 }
               />
               <div className="flex min-w-0 flex-1 flex-col">
-                <div className="min-h-0 flex-1">
-                  <DiffViewer
-                    repoPath={repoPath}
-                    filePath={selectedFile?.path ?? null}
-                  />
-                </div>
-                <ResizeHandle
-                  orientation="horizontal"
-                  onPointerDown={(event) =>
-                    setDragState({
-                      kind: "commitHeight",
-                      startPointer: event.clientY,
-                      startSize: commitPanelHeight,
-                    })
-                  }
-                />
-                <div
-                  className="flex-shrink-0 overflow-y-auto"
-                  style={{ height: commitPanelHeight }}
-                >
-                  <CommitPanel onCommitted={() => setSelectedFile(null)} />
-                </div>
+                {status?.files.length === 0 ? (
+                  <CleanWorkspace />
+                ) : (
+                  <>
+                    <div className="min-h-0 flex-1">
+                      <DiffViewer
+                        repoPath={repoPath}
+                        filePath={selectedFile?.path ?? null}
+                        showAllWhenNoFile={false}
+                        emptyStateMessage="Select a changed file to inspect its diff"
+                      />
+                    </div>
+                    <ResizeHandle
+                      orientation="horizontal"
+                      onPointerDown={(event) =>
+                        setDragState({
+                          kind: "commitHeight",
+                          startPointer: event.clientY,
+                          startSize: commitPanelHeight,
+                        })
+                      }
+                    />
+                    <div
+                      className="flex-shrink-0 overflow-y-auto"
+                      style={{ height: commitPanelHeight }}
+                    >
+                      <CommitPanel onCommitted={() => setSelectedFile(null)} />
+                    </div>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -289,6 +311,19 @@ function ResizeHandle({
           orientation === "vertical" ? "border-x border-zinc-800" : "border-y border-zinc-800"
         }`}
       />
+    </div>
+  );
+}
+
+function CleanWorkspace() {
+  return (
+    <div className="flex h-full items-center justify-center bg-zinc-950/30">
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-6 py-5 text-center">
+        <div className="text-sm font-medium text-zinc-200">Working tree is clean</div>
+        <div className="mt-1 text-xs text-zinc-500">
+          No local changes to review right now. This view will repopulate when new edits land.
+        </div>
+      </div>
     </div>
   );
 }

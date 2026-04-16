@@ -35,6 +35,11 @@ export function getDiff(repo: string, file?: string, staged?: boolean) {
   return api<FileDiff[]>(`${GIT_BASE}/diff?${params}`);
 }
 
+export function getCommitDiff(repo: string, commit: string) {
+  const params = new URLSearchParams({ repo, commit });
+  return api<FileDiff[]>(`${GIT_BASE}/commit-diff?${params}`);
+}
+
 export function stageFiles(repo: string, files?: string[]) {
   return api<{ success: boolean }>(`${GIT_BASE}/stage`, {
     method: "POST",
