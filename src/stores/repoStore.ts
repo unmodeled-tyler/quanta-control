@@ -56,6 +56,7 @@ interface RepoStore {
 
   setRepo: (path: string) => void;
   refresh: () => Promise<void>;
+  pollRepo: () => Promise<void>;
   refreshStatus: () => Promise<boolean>;
   refreshBranches: () => Promise<void>;
   refreshLog: () => Promise<void>;
@@ -104,6 +105,21 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
       set({ error: err.message });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  pollRepo: async () => {
+    const { repoPath } = get();
+    if (!repoPath) return;
+
+    try {
+      await Promise.all([
+        get().refreshStatus(),
+        get().refreshBranches(),
+        get().refreshLog(),
+      ]);
+    } catch (err: any) {
+      set({ error: err.message });
     }
   },
 

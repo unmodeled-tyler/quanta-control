@@ -91,8 +91,8 @@ export function SettingsView() {
           <SectionHeader icon={<RefreshCw className="w-4 h-4" />} title="Auto Refresh" />
           <div className="space-y-3 mt-3">
             <Toggle
-              label="Auto refresh status"
-              description="Periodically refresh git status"
+              label="Auto refresh repo"
+              description="Continuously poll status, history, branches, and diff state"
               checked={settings.autoRefresh}
               onChange={(v) => updateSetting("autoRefresh", v)}
             />
@@ -102,9 +102,9 @@ export function SettingsView() {
                 value={String(settings.autoRefreshInterval)}
                 onChange={(v) => {
                   const n = parseInt(v, 10);
-                  if (!isNaN(n) && n >= 5) updateSetting("autoRefreshInterval", n);
+                  if (!isNaN(n) && n >= 2) updateSetting("autoRefreshInterval", n);
                 }}
-                placeholder="30"
+                placeholder="3"
               />
             )}
             <Toggle

@@ -40,7 +40,7 @@ type DragState =
   | null;
 
 export default function App() {
-  const { repoPath, setRepo, status } = useRepoStore();
+  const { repoPath, setRepo, status, lastStatusUpdateAt } = useRepoStore();
   const { settings } = useSettingsStore();
   const [view, setView] = useState<View>("status");
   const [selectedFile, setSelectedFile] = useState<GitFile | null>(null);
@@ -70,21 +70,32 @@ export default function App() {
   useEffect(() => {
     if (!repoPath || !settings.autoRefresh) return;
 
-    const intervalMs = Math.max(settings.autoRefreshInterval, 5) * 1000;
+    const intervalMs = Math.max(settings.autoRefreshInterval, 2) * 1000;
+    let cancelled = false;
+    let polling = false;
 
     const poll = async () => {
+      if (cancelled || polling) return;
+
+      polling = true;
       const store = useRepoStore.getState();
-      const hasChanged = await store.refreshStatus();
-      if (hasChanged) {
-        await Promise.all([store.refreshBranches(), store.refreshLog()]);
+      try {
+        await store.pollRepo();
+      } finally {
+        polling = false;
       }
     };
+
+    void poll();
 
     const timer = window.setInterval(() => {
       void poll();
     }, intervalMs);
 
-    return () => window.clearInterval(timer);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
   }, [repoPath, settings.autoRefresh, settings.autoRefreshInterval]);
 
   useEffect(() => {
@@ -203,6 +214,7 @@ export default function App() {
                         filePath={selectedFile?.path ?? null}
                         showAllWhenNoFile={false}
                         emptyStateMessage="Select a changed file to inspect its diff"
+                        refreshKey={lastStatusUpdateAt}
                       />
                     </div>
                     <ResizeHandle
@@ -232,6 +244,7 @@ export default function App() {
               <DiffViewer
                 repoPath={repoPath}
                 filePath={selectedFile?.path ?? null}
+                refreshKey={lastStatusUpdateAt}
               />
             </div>
           )}

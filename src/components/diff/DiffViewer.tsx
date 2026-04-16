@@ -117,32 +117,79 @@ export function DiffViewer({
   staged,
   showAllWhenNoFile = true,
   emptyStateMessage,
+  refreshKey,
 }: {
   repoPath: string;
   filePath: string | null;
   staged?: boolean;
   showAllWhenNoFile?: boolean;
   emptyStateMessage?: string;
+  refreshKey?: number | null;
 }) {
   const [diffs, setDiffs] = useState<FileDiff[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!filePath) {
-      if (!showAllWhenNoFile) {
+    let cancelled = false;
+
+    const applyDiffs = (nextDiffs: FileDiff[]) => {
+      if (!cancelled) {
+        setDiffs(nextDiffs);
+      }
+    };
+
+    const clearDiffs = () => {
+      if (!cancelled) {
         setDiffs([]);
         setLoading(false);
-        return;
       }
-      api.getDiff(repoPath, undefined, staged).then(setDiffs).catch(() => setDiffs([]));
-      return;
+    };
+
+    if (!filePath) {
+      if (!showAllWhenNoFile) {
+        clearDiffs();
+        return () => {
+          cancelled = true;
+        };
+      }
+
+      const shouldShowLoading = diffs.length === 0;
+      if (shouldShowLoading) {
+        setLoading(true);
+      }
+
+      api.getDiff(repoPath, undefined, staged)
+        .then(applyDiffs)
+        .catch(() => applyDiffs([]))
+        .finally(() => {
+          if (!cancelled && shouldShowLoading) {
+            setLoading(false);
+          }
+        });
+
+      return () => {
+        cancelled = true;
+      };
     }
-    setLoading(true);
+
+    const shouldShowLoading = diffs.length === 0;
+    if (shouldShowLoading) {
+      setLoading(true);
+    }
+
     api.getDiff(repoPath, filePath, staged)
-      .then(setDiffs)
-      .catch(() => setDiffs([]))
-      .finally(() => setLoading(false));
-  }, [repoPath, filePath, staged]);
+      .then(applyDiffs)
+      .catch(() => applyDiffs([]))
+      .finally(() => {
+        if (!cancelled && shouldShowLoading) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [filePath, refreshKey, repoPath, showAllWhenNoFile, staged]);
 
   return (
     <DiffContent
