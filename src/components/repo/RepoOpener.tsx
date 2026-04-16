@@ -4,6 +4,7 @@ import * as api from "../../services/api";
 import type { BrowseChild, BrowseResult } from "../../services/api";
 import type { SystemStatus } from "../../types/system";
 import { SetupChecklist } from "../setup/SetupChecklist";
+import { SettingsView } from "../settings/SettingsView";
 import { useSettingsStore } from "../../stores/settingsStore";
 
 const RECENT_REPOS_KEY = "quanta-recent-repos";
@@ -21,21 +22,27 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
   const [browseState, setBrowseState] = useState<BrowseResult | null>(null);
   const [browseHistory, setBrowseHistory] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
   const [systemLoading, setSystemLoading] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const loadSystemStatus = useCallback(() => {
+    setSystemLoading(true);
+    api.getSystemStatus()
+      .then(setSystemStatus)
+      .catch(() => {})
+      .finally(() => setSystemLoading(false));
+  }, []);
 
   useEffect(() => {
     const stored = loadRecentRepos();
     api.getRecentRepos()
       .then((repos) => setRecent(mergeRecentRepos(stored, repos)))
       .catch(() => setRecent(stored));
-    api.getSystemStatus()
-      .then(setSystemStatus)
-      .catch(() => {})
-      .finally(() => setSystemLoading(false));
+    loadSystemStatus();
     inputRef.current?.focus();
-  }, []);
+  }, [loadSystemStatus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,143 +117,184 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
     <div className="flex-1 bg-zinc-950">
       <div className="mx-auto grid h-full w-full max-w-6xl gap-6 p-6 lg:grid-cols-[minmax(0,1.2fr)_380px] lg:p-10">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/70 p-8">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
-              <FolderOpen className="h-5 w-5 text-emerald-400" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold">Open Repository</h1>
-              <p className="text-sm text-zinc-500">
-                Enter a local path or browse for a Git repository.
-              </p>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="mb-4">
-            <div className="flex gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={path}
-                onChange={(e) => {
-                  setPath(e.target.value);
-                  setError(null);
-                }}
-                placeholder="~/my-project"
-                className="flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-              />
-              <button
-                type="submit"
-                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-emerald-500"
-              >
-                Open
-              </button>
-            </div>
-            <div className="mt-2 flex gap-2">
-              <button
-                type="button"
-                onClick={() => openBrowser()}
-                className="flex items-center gap-1.5 rounded-md border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
-              >
-                <ChevronRight className="h-3.5 w-3.5" />
-                Browse directories
-              </button>
-            </div>
-            {error && (
-              <p className="mt-2 flex items-center gap-1 text-sm text-red-400">
-                <X className="h-3 w-3" />
-                {error}
-              </p>
-            )}
-          </form>
-
-          {browsing && browseState && (
-            <div className="mb-6 overflow-hidden rounded-lg border border-zinc-800">
-              <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900 px-3 py-2">
+          {showSettings ? (
+            <>
+              <div className="mb-6 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
+                    <FolderOpen className="h-5 w-5 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-semibold">Settings</h1>
+                    <p className="text-sm text-zinc-500">
+                      Adjust startup defaults before opening a repository.
+                    </p>
+                  </div>
+                </div>
                 <button
-                  onClick={goBack}
-                  disabled={browseHistory.length === 0}
-                  className="rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400"
+                  onClick={() => setShowSettings(false)}
+                  className="rounded-md border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100"
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={goUp}
-                  className="rounded p-1 text-xs text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-                  title="Parent directory"
-                >
-                  ↑
-                </button>
-                <span className="flex-1 truncate font-mono text-xs text-zinc-500">
-                  {browseState.path}
-                </span>
-                <button
-                  onClick={() => setShowHidden((hidden) => !hidden)}
-                  className="rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
-                  title={showHidden ? "Hide hidden" : "Show hidden"}
-                >
-                  {showHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  Back to opener
                 </button>
               </div>
+              <div className="-mx-6 -mb-6">
+                <SettingsView />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-8 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
+                  <FolderOpen className="h-5 w-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-semibold">Open Repository</h1>
+                  <p className="text-sm text-zinc-500">
+                    Enter a local path or browse for a Git repository.
+                  </p>
+                </div>
+              </div>
 
-              {browseState.isGitRepo && (
-                <button
-                  onClick={() => onSelect(browseState.path)}
-                  className="w-full border-b border-zinc-800 bg-emerald-500/10 px-3 py-2 text-left transition-colors hover:bg-emerald-500/20"
-                >
-                  <span className="flex items-center gap-2 text-sm font-medium text-emerald-400">
-                    <GitBranch className="h-4 w-4" />
-                    Open this repository
-                  </span>
-                </button>
+              <form onSubmit={handleSubmit} className="mb-4">
+                <div className="flex gap-2">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={path}
+                    onChange={(e) => {
+                      setPath(e.target.value);
+                      setError(null);
+                    }}
+                    placeholder="~/my-project"
+                    className="flex-1 rounded-md border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm placeholder-zinc-600 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium transition-colors hover:bg-emerald-500"
+                  >
+                    Open
+                  </button>
+                </div>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openBrowser()}
+                    className="flex items-center gap-1.5 rounded-md border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                    Browse directories
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSettings(true)}
+                    className="flex items-center gap-1.5 rounded-md border border-zinc-700 px-3 py-1.5 text-xs text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+                  >
+                    Preferences
+                  </button>
+                </div>
+                {error && (
+                  <p className="mt-2 flex items-center gap-1 text-sm text-red-400">
+                    <X className="h-3 w-3" />
+                    {error}
+                  </p>
+                )}
+              </form>
+
+              {browsing && browseState && (
+                <div className="mb-6 overflow-hidden rounded-lg border border-zinc-800">
+                  <div className="flex items-center gap-2 border-b border-zinc-800 bg-zinc-900 px-3 py-2">
+                    <button
+                      onClick={goBack}
+                      disabled={browseHistory.length === 0}
+                      className="rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200 disabled:opacity-30 disabled:hover:text-zinc-400"
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={goUp}
+                      className="rounded p-1 text-xs text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                      title="Parent directory"
+                    >
+                      ↑
+                    </button>
+                    <span className="flex-1 truncate font-mono text-xs text-zinc-500">
+                      {browseState.path}
+                    </span>
+                    <button
+                      onClick={() => setShowHidden((hidden) => !hidden)}
+                      className="rounded p-1 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                      title={showHidden ? "Hide hidden" : "Show hidden"}
+                    >
+                      {showHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+
+                  {browseState.isGitRepo && (
+                    <button
+                      onClick={() => onSelect(browseState.path)}
+                      className="w-full border-b border-zinc-800 bg-emerald-500/10 px-3 py-2 text-left transition-colors hover:bg-emerald-500/20"
+                    >
+                      <span className="flex items-center gap-2 text-sm font-medium text-emerald-400">
+                        <GitBranch className="h-4 w-4" />
+                        Open this repository
+                      </span>
+                    </button>
+                  )}
+
+                  <div className="max-h-72 overflow-y-auto">
+                    {browseState.children.map((child) => (
+                      <DirectoryEntry
+                        key={child.path}
+                        child={child}
+                        onOpen={navigateTo}
+                        onSelect={onSelect}
+                      />
+                    ))}
+                    {browseState.children.length === 0 && (
+                      <div className="px-3 py-4 text-center text-xs text-zinc-600">
+                        No directories found
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
 
-              <div className="max-h-72 overflow-y-auto">
-                {browseState.children.map((child) => (
-                  <DirectoryEntry
-                    key={child.path}
-                    child={child}
-                    onOpen={navigateTo}
-                    onSelect={onSelect}
-                  />
-                ))}
-                {browseState.children.length === 0 && (
-                  <div className="px-3 py-4 text-center text-xs text-zinc-600">
-                    No directories found
+              {recent.length > 0 && (
+                <div>
+                  <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
+                    Recent Repositories
+                  </h2>
+                  <div className="space-y-1">
+                    {recent.map((repo) => (
+                      <button
+                        key={repo.path}
+                        onClick={() => onSelect(repo.path)}
+                        className="group w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-zinc-900"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FolderOpen className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium">{repo.name}</div>
+                            <div className="truncate text-xs text-zinc-600">{repo.path}</div>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {recent.length > 0 && (
-            <div>
-              <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
-                Recent Repositories
-              </h2>
-              <div className="space-y-1">
-                {recent.map((repo) => (
-                  <button
-                    key={repo.path}
-                    onClick={() => onSelect(repo.path)}
-                    className="group w-full rounded-md px-3 py-2 text-left transition-colors hover:bg-zinc-900"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FolderOpen className="h-4 w-4 text-zinc-500 group-hover:text-zinc-300" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium">{repo.name}</div>
-                        <div className="truncate text-xs text-zinc-600">{repo.path}</div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
+                </div>
+              )}
+            </>
           )}
         </div>
 
         <div className="lg:pt-2">
-          <SetupChecklist status={systemStatus} loading={systemLoading} />
+          <SetupChecklist
+            status={systemStatus}
+            loading={systemLoading}
+            onOpenSettings={() => setShowSettings(true)}
+            onRefresh={loadSystemStatus}
+          />
         </div>
       </div>
     </div>

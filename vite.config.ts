@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
+const clientPort = parseInt(process.env.QUANTA_CONTROL_CLIENT_PORT || "5173", 10);
+const serverPort = parseInt(process.env.QUANTA_CONTROL_SERVER_PORT || "3001", 10);
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
@@ -11,10 +14,12 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    host: "127.0.0.1",
+    port: clientPort,
+    strictPort: true,
     proxy: {
       "/api": {
-        target: "http://localhost:3001",
+        target: `http://127.0.0.1:${serverPort}`,
         changeOrigin: true,
       },
     },

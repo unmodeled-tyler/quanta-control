@@ -57,7 +57,8 @@ export function createApp() {
 
 export async function startServer(options?: { port?: number; host?: string }) {
   const app = createApp();
-  const port = options?.port ?? parseInt(process.env.PORT || "4123", 10);
+  const defaultPort = process.env.NODE_ENV === "production" ? "4123" : "3001";
+  const port = options?.port ?? parseInt(process.env.PORT || defaultPort, 10);
   const host = options?.host ?? (process.env.HOST || "127.0.0.1");
 
   return new Promise<ReturnType<typeof app.listen>>((resolveServer) => {
