@@ -14,16 +14,15 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
   const [pushing, setPushing] = useState(false);
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const pushYesRef = useRef<HTMLButtonElement>(null);
-
-  if (!repoPath || !status) return null;
-
-  const hasChanges = status.files.length > 0;
+  const hasChanges = (status?.files.length ?? 0) > 0;
   const hasStaged =
-    status.files.filter(
+    status?.files.some(
       (f) => f.stagedStatus === "staged" || f.stagedStatus === "partially_staged",
-    ).length > 0;
+    ) ?? false;
 
   const doPush = async () => {
+    if (!repoPath) return;
+
     setPushing(true);
     try {
       await api.push(repoPath);
@@ -46,7 +45,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
   }, [finalizeCommitFlow]);
 
   const handleCommit = async () => {
-    if (!message.trim() || !hasChanges) return;
+    if (!repoPath || !status || !message.trim() || !hasChanges) return;
 
     setCommitting(true);
     try {
@@ -76,6 +75,8 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
     }
     doPush();
   };
+
+  if (!repoPath || !status) return null;
 
   return (
     <div className="h-full overflow-y-auto border-t border-zinc-800 bg-zinc-950">

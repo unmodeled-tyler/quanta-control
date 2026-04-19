@@ -12,8 +12,6 @@ export function LogView() {
   const [loadingCommit, setLoadingCommit] = useState<string | null>(null);
   const [error, setError] = useState<{ hash: string; message: string } | null>(null);
 
-  if (!repoPath) return null;
-
   useEffect(() => {
     if (commits.length === 0) {
       setSelectedCommit(null);
@@ -74,6 +72,8 @@ export function LogView() {
     }),
     { additions: 0, deletions: 0 },
   );
+
+  if (!repoPath) return null;
 
   return (
     <div className="flex h-full overflow-hidden">
