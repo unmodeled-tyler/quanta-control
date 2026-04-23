@@ -5,6 +5,8 @@ import type {
   Branch,
   Remote,
   CommitActivity,
+  StashEntry,
+  DiffHunk,
 } from "../types/git";
 import type { SystemStatus } from "../types/system";
 
@@ -184,4 +186,45 @@ export function getGitConfig(repo: string, key: string) {
 
 export function getSystemStatus() {
   return api<SystemStatus>(`${SYSTEM_BASE}/status`);
+}
+
+export function applyHunk(repo: string, diff: FileDiff, hunk: DiffHunk, reverse = false) {
+  return api<{ success: boolean }>("/api/apply-hunk", {
+    method: "POST",
+    body: JSON.stringify({
+      repo,
+      file: diff.path,
+      oldFile: diff.oldPath,
+      newFile: diff.newFile,
+      newMode: diff.newMode,
+      deletedMode: diff.deletedMode,
+      hunk,
+      reverse,
+    }),
+  });
+}
+
+export function getStashes(repo: string) {
+  return api<StashEntry[]>(`/api/stashes?repo=${encodeURIComponent(repo)}`);
+}
+
+export function applyStash(repo: string, name: string) {
+  return api<{ success: boolean }>("/api/stash-apply", {
+    method: "POST",
+    body: JSON.stringify({ repo, name }),
+  });
+}
+
+export function popStash(repo: string, name: string) {
+  return api<{ success: boolean }>("/api/stash-pop", {
+    method: "POST",
+    body: JSON.stringify({ repo, name }),
+  });
+}
+
+export function dropStash(repo: string, name: string) {
+  return api<{ success: boolean }>("/api/stash-drop", {
+    method: "POST",
+    body: JSON.stringify({ repo, name }),
+  });
 }

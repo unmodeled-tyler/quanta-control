@@ -11,6 +11,7 @@ import { LogView } from "./components/log/LogView";
 import { RemoteActions } from "./components/remote/RemoteActions";
 import { SettingsView } from "./components/settings/SettingsView";
 import { StatsView } from "./components/stats/StatsView";
+import { StashView } from "./components/stashes/StashView";
 import { useSettingsStore } from "./stores/settingsStore";
 import type { GitFile } from "./types/git";
 import { connectRepoEvents, disconnectRepoEvents } from "./services/sse";
@@ -278,6 +279,12 @@ export default function App() {
           {view === "stats" && (
             <div className="flex-1">
               <StatsView onOpenSettings={() => setView("settings")} />
+            </div>
+          )}
+
+          {view === "stashes" && (
+            <div className="flex-1">
+              <StashView />
             </div>
           )}
 

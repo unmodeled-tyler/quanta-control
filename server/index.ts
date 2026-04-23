@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import gitRoutes from "./routes/git.js";
 import repoRoutes from "./routes/repos.js";
 import systemRoutes from "./routes/system.js";
+import { featureRoutes } from "./routes/hunksAndStash.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -39,6 +40,7 @@ export function createApp() {
   app.use("/api/git", gitRoutes);
   app.use("/api/repos", repoRoutes);
   app.use("/api/system", systemRoutes);
+  app.use("/api", featureRoutes);
 
   if (existsSync(clientDist)) {
     app.use(express.static(clientDist));

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import * as api from "../../services/api";
+import { useEffect, useState, useCallback } from "react";
+import { useRepoStore } from "../../stores/repoStore";
 import type { FileDiff, DiffLine } from "../../types/git";
+import { applyHunk } from "../../services/api";
 
 function DiffLineView({ line }: { line: DiffLine }) {
   const bg =
@@ -33,18 +34,87 @@ function DiffLineView({ line }: { line: DiffLine }) {
   );
 }
 
+function HunkActions({
+  diff,
+  hunk,
+  onAction,
+}: {
+  diff: FileDiff;
+  hunk: FileDiff["hunks"][number];
+  onAction: () => void;
+}) {
+  const { repoPath } = useRepoStore();
+  const [busy, setBusy] = useState(false);
+
+  const handleStage = useCallback(async () => {
+    if (!repoPath || busy) return;
+    setBusy(true);
+    try {
+      await applyHunk(repoPath, diff, hunk);
+      onAction();
+    } catch (err) {
+      console.error("Stage hunk failed:", err);
+    } finally {
+      setBusy(false);
+    }
+  }, [repoPath, diff, hunk, busy, onAction]);
+
+  const handleUnstage = useCallback(async () => {
+    if (!repoPath || busy) return;
+    setBusy(true);
+    try {
+      await applyHunk(repoPath, diff, hunk, true);
+      onAction();
+    } catch (err) {
+      console.error("Unstage hunk failed:", err);
+    } finally {
+      setBusy(false);
+    }
+  }, [repoPath, diff, hunk, busy, onAction]);
+
+  return (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={handleStage}
+        disabled={busy}
+        className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 transition-colors disabled:opacity-40"
+        title="Stage hunk"
+      >
+        Stage
+      </button>
+      <button
+        onClick={handleUnstage}
+        disabled={busy}
+        className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 hover:bg-yellow-600/20 text-yellow-400 border border-yellow-600/30 transition-colors disabled:opacity-40"
+        title="Unstage hunk"
+      >
+        Unstage
+      </button>
+    </div>
+  );
+}
+
 function DiffHunkView({
   hunks,
+  diff,
+  onAction,
 }: {
   hunks: FileDiff["hunks"];
+  diff: FileDiff;
+  onAction: () => void;
 }) {
   return (
     <div>
       {hunks.map((hunk, i) => (
         <div key={i}>
           <div className="px-3 py-1 bg-blue-500/10 text-blue-400 text-xs font-mono">
-            @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines}@@{" "}
-            {hunk.header}
+            <div className="flex items-center justify-between">
+              <span>
+                @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines}@@{" "}
+                {hunk.header}
+              </span>
+              <HunkActions diff={diff} hunk={hunk} onAction={onAction} />
+            </div>
           </div>
           {hunk.lines.map((line, j) => (
             <DiffLineView key={j} line={line} />
@@ -60,11 +130,13 @@ export function DiffContent({
   loading = false,
   loadingMessage = "Loading diff...",
   emptyStateMessage = "Select a file to view diff",
+  onAction,
 }: {
   diffs: FileDiff[];
   loading?: boolean;
   loadingMessage?: string;
   emptyStateMessage?: string;
+  onAction?: () => void;
 }) {
   if (loading) {
     return (
@@ -103,7 +175,7 @@ export function DiffContent({
               Binary file
             </div>
           ) : (
-            <DiffHunkView hunks={diff.hunks} />
+            <DiffHunkView hunks={diff.hunks} diff={diff} onAction={onAction ?? (() => {})} />
           )}
         </div>
       ))}
@@ -129,73 +201,36 @@ export function DiffViewer({
   const [diffs, setDiffs] = useState<FileDiff[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
+  const loadDiffs = useCallback(async () => {
     let cancelled = false;
-
-    const applyDiffs = (nextDiffs: FileDiff[]) => {
-      if (!cancelled) {
-        setDiffs(nextDiffs);
-      }
-    };
-
-    const clearDiffs = () => {
-      if (!cancelled) {
-        setDiffs([]);
-        setLoading(false);
-      }
-    };
-
-    if (!filePath) {
-      if (!showAllWhenNoFile) {
-        clearDiffs();
-        return () => {
-          cancelled = true;
-        };
-      }
-
-      const shouldShowLoading = diffs.length === 0;
-      if (shouldShowLoading) {
-        setLoading(true);
-      }
-
-      api.getDiff(repoPath, undefined, staged)
-        .then(applyDiffs)
-        .catch(() => applyDiffs([]))
-        .finally(() => {
-          if (!cancelled && shouldShowLoading) {
-            setLoading(false);
-          }
-        });
-
-      return () => {
-        cancelled = true;
-      };
+    setLoading(true);
+    try {
+      const api = await import("../../services/api");
+      const next = await api.getDiff(repoPath, filePath ?? undefined, staged);
+      if (!cancelled) setDiffs(next);
+    } catch {
+      if (!cancelled) setDiffs([]);
+    } finally {
+      if (!cancelled) setLoading(false);
     }
+    return () => { cancelled = true; };
+  }, [repoPath, filePath, staged]);
 
-    const shouldShowLoading = diffs.length === 0;
-    if (shouldShowLoading) {
-      setLoading(true);
+  useEffect(() => {
+    if (!filePath && !showAllWhenNoFile) {
+      setDiffs([]);
+      setLoading(false);
+      return;
     }
-
-    api.getDiff(repoPath, filePath, staged)
-      .then(applyDiffs)
-      .catch(() => applyDiffs([]))
-      .finally(() => {
-        if (!cancelled && shouldShowLoading) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [filePath, refreshKey, repoPath, showAllWhenNoFile, staged]);
+    void loadDiffs();
+  }, [filePath, refreshKey, repoPath, showAllWhenNoFile, staged, loadDiffs]);
 
   return (
     <DiffContent
       diffs={diffs}
       loading={loading}
       emptyStateMessage={filePath ? "No changes" : (emptyStateMessage || "Select a file to view diff")}
+      onAction={loadDiffs}
     />
   );
 }

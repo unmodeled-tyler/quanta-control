@@ -1,4 +1,4 @@
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
 import { promisify } from "util";
 import { homedir } from "os";
 import { resolve } from "path";
@@ -16,6 +16,7 @@ export interface GitExecOptions {
   cwd?: string;
   env?: Record<string, string>;
   maxBuffer?: number;
+  input?: string | Buffer;
 }
 
 export interface GitExecResult {
@@ -28,9 +29,40 @@ export async function git(
   args: string[],
   options: GitExecOptions = {},
 ): Promise<GitExecResult> {
-  const { cwd, env, maxBuffer = 10 * 1024 * 1024 } = options;
+  const { cwd, env, maxBuffer = 10 * 1024 * 1024, input } = options;
 
   const resolvedCwd = cwd ? expandPath(cwd) : undefined;
+
+  if (input) {
+    return new Promise((resolve) => {
+      const child = spawn("git", args, {
+        cwd: resolvedCwd,
+        env: { ...process.env, ...env } as any,
+      });
+
+      let stdout = "";
+      let stderr = "";
+
+      child.stdout.setEncoding("utf-8");
+      child.stderr.setEncoding("utf-8");
+      child.stdout.on("data", (data) => { stdout += data; });
+      child.stderr.on("data", (data) => { stderr += data; });
+
+      child.on("error", (err: any) => {
+        if (err.code === "ENOENT") {
+          resolve({ stdout: "", stderr: "git is not installed or not in PATH", exitCode: 1 });
+        } else {
+          resolve({ stdout: "", stderr: err.message || String(err), exitCode: 1 });
+        }
+      });
+
+      child.on("close", (code) => {
+        resolve({ stdout, stderr, exitCode: code ?? 0 });
+      });
+
+      child.stdin.end(input);      
+    });
+  }
 
   try {
     const { stdout, stderr } = await execFileAsync("git", args, {

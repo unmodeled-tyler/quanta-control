@@ -43,6 +43,20 @@ export interface FileDiff {
   deletions: number;
   hunks: DiffHunk[];
   isBinary: boolean;
+  oldFile?: string;
+  newFile?: string;
+  newMode?: string;
+  deletedMode?: string;
+}
+
+export interface StashEntry {
+  index: number;
+  name: string;
+  hash: string;
+  shortHash: string;
+  message: string;
+  date: string;
+  branch: string;
 }
 
 export interface CommitInfo {
