@@ -185,6 +185,7 @@ That launcher starts the local API server and Vite client, then opens Quanta Con
 - Quanta Control is currently centered on local repository operations, not GitHub PR review or hosted account management.
 - The app depends on your system Git installation being available in `PATH`.
 - GitHub CLI is optional, but it improves first-run GitHub connectivity for most users.
+- This is really just a side project for me - I update it when I can/feel the inspo. 
 
 ## License
 
