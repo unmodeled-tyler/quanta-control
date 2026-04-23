@@ -24,19 +24,47 @@ function resolveServerEntry() {
 
 const serverEntry = resolveServerEntry();
 
+const repoRoot = resolve(here, "..");
+
 function printHelp() {
   console.log(`Quanta Control
 
 Usage:
-  quanta-control [--port <port>] [--host <host>] [--no-open]
+  quanta-control [--port <port>] [--host <host>] [--browser] [--no-open]
   quanta-control --help
 
 Options:
   --port <port>   Port to bind the local server to. Default: 4123
   --host <host>   Host interface to bind. Default: 127.0.0.1
-  --no-open       Do not open the browser automatically
+  --browser       Force browser tab mode (skip Electron window)
+  --no-open       Do not open the UI automatically
   --help          Show this help text
 `);
+}
+
+function launchElectron(url) {
+  const mainJs = resolve(repoRoot, "electron", "main.js");
+  const candidates = [
+    resolve(repoRoot, "node_modules", ".bin", "electron"),
+    resolve(repoRoot, "node_modules", ".bin", "electron.cmd"),
+  ];
+  const electronBin = candidates.find((c) => existsSync(c));
+  if (!electronBin || !existsSync(mainJs)) {
+    return false;
+  }
+
+  const child = spawn(electronBin, [mainJs, `--url=${url}`], {
+    cwd: repoRoot,
+    stdio: "inherit",
+    detached: false,
+  });
+
+  child.on("error", (err) => {
+    console.error("Failed to start Electron:", err.message);
+    openBrowser(url);
+  });
+
+  return true;
 }
 
 function openBrowser(url) {
@@ -67,6 +95,7 @@ function openBrowser(url) {
 const args = process.argv.slice(2);
 let port = process.env.PORT || "4123";
 let host = process.env.HOST || "127.0.0.1";
+let useBrowser = false;
 let shouldOpen = true;
 
 for (let index = 0; index < args.length; index += 1) {
@@ -75,6 +104,11 @@ for (let index = 0; index < args.length; index += 1) {
   if (arg === "--help" || arg === "-h") {
     printHelp();
     process.exit(0);
+  }
+
+  if (arg === "--browser") {
+    useBrowser = true;
+    continue;
   }
 
   if (arg === "--no-open") {
@@ -127,5 +161,8 @@ const url = `http://${host}:${resolvedPort}`;
 console.log(`Quanta Control is running at ${url}`);
 
 if (shouldOpen) {
-  openBrowser(url);
+  const electronLaunched = !useBrowser && launchElectron(url);
+  if (!electronLaunched) {
+    openBrowser(url);
+  }
 }
