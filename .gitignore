@@ -9,3 +9,4 @@ build/
 npm-debug.log*
 .codex
 test-results/.last-run.json
+package-lock.json

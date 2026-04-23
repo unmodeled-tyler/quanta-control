@@ -7,7 +7,6 @@ export interface AppSettings {
   defaultBranch: string;
   pruneOnFetch: boolean;
   autoRefresh: boolean;
-  autoRefreshInterval: number;
   showHiddenFiles: boolean;
   diffView: "unified" | "split";
   confirmDiscard: boolean;
@@ -22,7 +21,6 @@ const DEFAULTS: AppSettings = {
   defaultBranch: "main",
   pruneOnFetch: false,
   autoRefresh: true,
-  autoRefreshInterval: 3,
   showHiddenFiles: false,
   diffView: "unified",
   confirmDiscard: true,

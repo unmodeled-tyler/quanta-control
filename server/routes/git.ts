@@ -542,4 +542,32 @@ router.get("/config", async (req, res, next) => {
   }
 });
 
+router.get("/events", async (req, res) => {
+  try {
+    const repo = req.query.repo as string;
+    if (!repo) {
+      return res.status(400).json({ error: "repo path required" });
+    }
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    const { getRepoWatcher } = await import("../services/repoWatcher.js");
+    const watcher = getRepoWatcher(repo);
+
+    const write = (data: string) => {
+      res.write(data);
+    };
+
+    const remove = watcher.add(write);
+
+    req.on("close", remove);
+    req.socket.on("end", remove);
+  } catch {
+    res.status(500).end();
+  }
+});
+
 export default router;

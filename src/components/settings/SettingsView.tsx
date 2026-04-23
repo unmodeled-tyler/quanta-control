@@ -92,21 +92,10 @@ export function SettingsView() {
           <div className="space-y-3 mt-3">
             <Toggle
               label="Auto refresh repo"
-              description="Continuously poll status, history, branches, and diff state"
+              description="Watch the working tree and auto-refresh on file changes"
               checked={settings.autoRefresh}
               onChange={(v) => updateSetting("autoRefresh", v)}
             />
-            {settings.autoRefresh && (
-              <TextInput
-                label="Interval (seconds)"
-                value={String(settings.autoRefreshInterval)}
-                onChange={(v) => {
-                  const n = parseInt(v, 10);
-                  if (!isNaN(n) && n >= 2) updateSetting("autoRefreshInterval", n);
-                }}
-                placeholder="3"
-              />
-            )}
             <Toggle
               label="Prune on fetch"
               description="Remove stale remote-tracking references"

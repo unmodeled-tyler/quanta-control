@@ -13,6 +13,8 @@ import { SettingsView } from "./components/settings/SettingsView";
 import { StatsView } from "./components/stats/StatsView";
 import { useSettingsStore } from "./stores/settingsStore";
 import type { GitFile } from "./types/git";
+import { connectRepoEvents, disconnectRepoEvents } from "./services/sse";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 
 const STATUS_PANEL_WIDTH_KEY = "quanta-layout-status-width";
 const BRANCH_PANEL_WIDTH_KEY = "quanta-layout-branch-width";
@@ -49,6 +51,13 @@ export default function App() {
   const [commitPanelHeight, setCommitPanelHeight] = useState(() => loadStoredNumber(COMMIT_PANEL_HEIGHT_KEY, 180));
   const [dragState, setDragState] = useState<DragState>(null);
 
+  useKeyboardShortcuts({
+    view,
+    onViewChange: setView,
+    selectedFile,
+    onSelectFile: setSelectedFile,
+  });
+
   useEffect(() => {
     setSelectedFile(null);
   }, [repoPath]);
@@ -70,33 +79,15 @@ export default function App() {
   useEffect(() => {
     if (!repoPath || !settings.autoRefresh) return;
 
-    const intervalMs = Math.max(settings.autoRefreshInterval, 2) * 1000;
-    let cancelled = false;
-    let polling = false;
-
-    const poll = async () => {
-      if (cancelled || polling) return;
-
-      polling = true;
-      const store = useRepoStore.getState();
-      try {
-        await store.pollRepo();
-      } finally {
-        polling = false;
-      }
-    };
-
-    void poll();
-
-    const timer = window.setInterval(() => {
-      void poll();
-    }, intervalMs);
+    const store = useRepoStore.getState();
+    connectRepoEvents(repoPath, () => {
+      void store.pollRepo();
+    });
 
     return () => {
-      cancelled = true;
-      window.clearInterval(timer);
+      disconnectRepoEvents();
     };
-  }, [repoPath, settings.autoRefresh, settings.autoRefreshInterval]);
+  }, [repoPath, settings.autoRefresh]);
 
   useEffect(() => {
     if (!dragState) return;
