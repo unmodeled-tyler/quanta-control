@@ -11,3 +11,4 @@ npm-debug.log*
 test-results/.last-run.json
 package-lock.json
 test-git.mjs
+*.tsbuildinfo

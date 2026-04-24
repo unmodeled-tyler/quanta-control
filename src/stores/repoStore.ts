@@ -1,22 +1,15 @@
 import { create } from "zustand";
 import type { StatusResult, Branch, CommitInfo, GitFile } from "../types/git";
 import * as api from "../services/api";
-
-const RECENT_REPOS_KEY = "quanta-recent-repos";
+import { saveRecentRepo } from "../utils/recentRepos";
 
 function rememberRecentRepo(path: string) {
   try {
-    const stored = localStorage.getItem(RECENT_REPOS_KEY);
-    const parsed = stored ? (JSON.parse(stored) as Array<{ name: string; path: string }>) : [];
-    const next = [
-      {
-        name: path.split("/").filter(Boolean).pop() || path,
-        path,
-      },
-      ...parsed.filter((repo) => repo.path !== path),
-    ].slice(0, 8);
+    const next = saveRecentRepo(path);
 
-    localStorage.setItem(RECENT_REPOS_KEY, JSON.stringify(next));
+    if (typeof window !== "undefined" && window.electronAPI) {
+      window.electronAPI.setRecentRepos(next);
+    }
   } catch {}
 }
 

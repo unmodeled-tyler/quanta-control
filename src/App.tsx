@@ -16,6 +16,8 @@ import { useSettingsStore } from "./stores/settingsStore";
 import type { GitFile } from "./types/git";
 import { connectRepoEvents, disconnectRepoEvents } from "./services/sse";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import * as api from "./services/api";
+import { loadRecentRepos } from "./utils/recentRepos";
 
 const STATUS_PANEL_WIDTH_KEY = "quanta-layout-status-width";
 const BRANCH_PANEL_WIDTH_KEY = "quanta-layout-branch-width";
@@ -150,6 +152,53 @@ export default function App() {
       localStorage.setItem(COMMIT_PANEL_HEIGHT_KEY, String(commitPanelHeight));
     } catch {}
   }, [commitPanelHeight]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.electronAPI) return;
+    window.electronAPI.setRecentRepos(loadRecentRepos());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.electronAPI) return;
+    window.electronAPI.setCurrentRepo(repoPath ?? null);
+  }, [repoPath]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.electronAPI) return;
+    const electronAPI = window.electronAPI;
+
+    const removeOpenRepo = electronAPI.onOpenRepo(async (path) => {
+      if (!path) return;
+      try {
+        const result = await api.validateRepo(path);
+        if (result.valid) {
+          setRepo(result.resolvedPath);
+        } else {
+          electronAPI.notify("Quanta Control", `Not a valid repo: ${path}`);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        electronAPI.notify("Quanta Control", `Failed to open repo: ${message}`);
+      }
+    });
+
+    const removePullRepo = electronAPI.onPullRepo(async () => {
+      const current = useRepoStore.getState().repoPath;
+      if (!current) return;
+      try {
+        await api.pull(current);
+        electronAPI.notify("Quanta Control", `Pulled ${current}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Pull failed";
+        electronAPI.notify("Quanta Control", `Pull failed: ${message}`);
+      }
+    });
+
+    return () => {
+      removeOpenRepo();
+      removePullRepo();
+    };
+  }, [setRepo]);
 
   if (!repoPath) {
     return <RepoOpener onSelect={setRepo} />;
