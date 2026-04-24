@@ -30,7 +30,7 @@ async function getToken(): Promise<string> {
   return cachedToken;
 }
 
-async function api<T>(url: string, options?: RequestInit): Promise<T> {
+async function api<T>(url: string, options?: RequestInit, retry = true): Promise<T> {
   const token = await getToken();
   const hasBody = options?.body != null;
   const res = await fetch(url, {
@@ -41,6 +41,10 @@ async function api<T>(url: string, options?: RequestInit): Promise<T> {
       ...options?.headers,
     },
   });
+  if (res.status === 401 && retry) {
+    cachedToken = "";
+    return api<T>(url, options, false);
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || "Request failed");

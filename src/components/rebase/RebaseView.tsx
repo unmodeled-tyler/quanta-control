@@ -32,8 +32,8 @@ export function RebaseView() {
   const [editingMessageHash, setEditingMessageHash] = useState<string | null>(null);
   const [editMessageText, setEditMessageText] = useState("");
 
-  const baseCommitIndex = Math.min(commitCount, commits.length);
-  const baseCommit = commits[baseCommitIndex];
+  const effectiveCount = Math.min(commitCount, Math.max(commits.length - 1, 0));
+  const baseCommit = commits[effectiveCount];
 
   useEffect(() => {
     if (commits.length === 0 || initialized) return;
@@ -41,7 +41,7 @@ export function RebaseView() {
   }, [commits, initialized]);
 
   function buildTodos() {
-    const subset = commits.slice(0, commitCount);
+    const subset = commits.slice(0, effectiveCount);
     setTodos(
       subset.map((c, i) => ({
         action: "pick" as RebaseAction,
@@ -167,7 +167,7 @@ export function RebaseView() {
             </button>
             <button
               onClick={executeRebase}
-              disabled={rebasing || visibleTodos.length === 0}
+              disabled={rebasing || visibleTodos.length === 0 || !baseCommit}
               className="rounded-md bg-emerald-600 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {rebasing ? (
