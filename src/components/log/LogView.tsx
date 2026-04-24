@@ -1,12 +1,15 @@
-import { GitCommit, Files, Loader2 } from "lucide-react";
+import { GitCommit, Files, Loader2, List, Network } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 import { useEffect, useMemo, useState } from "react";
 import * as api from "../../services/api";
 import { DiffContent } from "../diff/DiffViewer";
 import type { CommitInfo, FileDiff } from "../../types/git";
+import { CommitGraph } from "./CommitGraph";
+import { formatAbsoluteDate, getRelativeTime } from "../../utils/time";
 
 export function LogView() {
   const { repoPath, commits } = useRepoStore();
+  const [mode, setMode] = useState<"list" | "graph">("graph");
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
   const [diffCache, setDiffCache] = useState<Record<string, FileDiff[]>>({});
   const [loadingCommit, setLoadingCommit] = useState<string | null>(null);
@@ -78,13 +81,55 @@ export function LogView() {
   return (
     <div className="flex h-full overflow-hidden">
       <div className="flex w-[360px] flex-shrink-0 flex-col border-r border-zinc-800">
-        <div className="p-3 border-b border-zinc-800">
+        <div className="flex items-center justify-between p-3 border-b border-zinc-800">
           <h2 className="text-sm font-semibold">History</h2>
+          <div
+            role="group"
+            aria-label="History view mode"
+            className="flex rounded-lg border border-zinc-800 bg-zinc-900/60 overflow-hidden"
+          >
+            <button
+              type="button"
+              onClick={() => setMode("list")}
+              aria-label="List view"
+              aria-pressed={mode === "list"}
+              title="List view"
+              className={`px-2 py-1 text-xs transition-colors ${
+                mode === "list"
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode("graph")}
+              aria-label="Graph view"
+              aria-pressed={mode === "graph"}
+              title="Graph view"
+              className={`px-2 py-1 text-xs transition-colors ${
+                mode === "graph"
+                  ? "bg-zinc-700 text-zinc-100"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <Network className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         {commits.length === 0 ? (
           <div className="flex items-center justify-center h-32 text-sm text-zinc-600">
             No commits
+          </div>
+        ) : mode === "graph" ? (
+          <div className="min-h-0 flex-1">
+            <CommitGraph
+              commits={commits}
+              selectedCommit={selectedCommit}
+              onSelectCommit={setSelectedCommit}
+            />
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -164,8 +209,7 @@ function CommitItem({
   isLoading: boolean;
   onSelect: (hash: string) => void;
 }) {
-  const date = new Date(commit.date);
-  const relative = getRelativeTime(date);
+  const relative = getRelativeTime(commit.date);
 
   return (
     <button
@@ -192,25 +236,4 @@ function CommitItem({
       </div>
     </button>
   );
-}
-
-function getRelativeTime(date: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHr = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHr / 24);
-
-  if (diffSec < 60) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  if (diffHr < 24) return `${diffHr}h ago`;
-  if (diffDay < 7) return `${diffDay}d ago`;
-  if (diffDay < 30) return `${Math.floor(diffDay / 7)}w ago`;
-  return date.toLocaleDateString();
-}
-
-function formatAbsoluteDate(value: string) {
-  const date = new Date(value);
-  return date.toLocaleString();
 }

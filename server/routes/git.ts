@@ -173,7 +173,7 @@ router.get("/log", async (req, res, next) => {
     if (!repo) return res.status(400).json({ error: "repo path required" });
 
     const sep = "|||QUANTA|||";
-    const format = `%H%n%h%n%an%n%ae%n%aI%n%s%n${sep}`;
+    const format = `%H%n%h%n%an%n%ae%n%aI%n%P%n%D%n%s%n${sep}`;
     const args = ["log", `--max-count=${count}`, `--format=${format}`];
     if (branch) args.push(branch);
 

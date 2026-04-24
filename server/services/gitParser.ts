@@ -196,22 +196,32 @@ export function parseLog(output: string): CommitInfo[] {
   if (!output.trim()) return [];
 
   const sep = "|||QUANTA|||";
-  const commits = output.split(sep).filter(Boolean);
+  const commits = output.split(sep).map((p) => p.trim()).filter(Boolean);
 
   return commits.map((raw) => {
-    const [hash, shortHash, author, email, date, ...msgParts] = raw.split("\n");
-    const message = msgParts.join("\n").trim();
-    const refs: string[] = [];
+    const lines = raw.split("\n");
+    const hash = lines[0]?.trim() ?? "";
+    const shortHash = lines[1]?.trim() ?? "";
+    const author = lines[2]?.trim() ?? "";
+    const email = lines[3]?.trim() ?? "";
+    const date = lines[4]?.trim() ?? "";
+    const parents = lines[5]?.trim() ? lines[5].trim().split(/\s+/) : [];
+    const refsLine = lines[6]?.trim() ?? "";
+    const message = lines.slice(7).join("\n").trim();
+
+    const refs = refsLine
+      ? refsLine.split(", ").map((r) => r.trim()).filter(Boolean)
+      : [];
 
     return {
-      hash: hash?.trim() ?? "",
-      shortHash: shortHash?.trim() ?? "",
-      author: author?.trim() ?? "",
-      authorEmail: email?.trim() ?? "",
-      date: date?.trim() ?? "",
+      hash,
+      shortHash,
+      author,
+      authorEmail: email,
+      date,
       message,
       refs,
-      parents: [],
+      parents,
     };
   });
 }
