@@ -1,18 +1,12 @@
 import { Router } from "express";
-import { appendFile, readFile, writeFile } from "fs/promises";
+import { appendFile, readFile, writeFile, mkdir, rm, chmod } from "fs/promises";
 import { join } from "path";
+import { tmpdir } from "os";
+import { randomUUID } from "crypto";
 import { gitInRepo, expandPath } from "../services/gitExecutor.js";
-import { parseStatus, parseDiff, parseLog, parseBranches, parseRemotes } from "../services/gitParser.js";
+import { parseStatus, parseDiff, parseLog, parseBranches, parseRemotes, LOG_SEPARATOR } from "../services/gitParser.js";
 
 const router = Router();
-
-function requireRepoPath(req: any, _res: any, next: any) {
-  const repoPath = req.query.repo as string || req.body?.repo;
-  if (!repoPath) {
-    return next(new Error("repo path is required"));
-  }
-  next();
-}
 
 router.get("/status", async (req, res, next) => {
   try {
@@ -118,7 +112,7 @@ router.post("/stage", async (req, res, next) => {
     if (!repo) return res.status(400).json({ error: "repo path required" });
 
     const filesArg = files?.length ? files : ["."];
-    const result = await gitInRepo(repo, ["add", ...filesArg]);
+    const result = await gitInRepo(repo, ["add", "--", ...filesArg]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -172,8 +166,7 @@ router.get("/log", async (req, res, next) => {
 
     if (!repo) return res.status(400).json({ error: "repo path required" });
 
-    const sep = "|||QUANTA|||";
-    const format = `%H%n%h%n%an%n%ae%n%aI%n%P%n%D%n%s%n${sep}`;
+    const format = `%H%n%h%n%an%n%ae%n%aI%n%P%n%D%n%s%n${LOG_SEPARATOR}`;
     const args = ["log", `--max-count=${count}`, `--format=${format}`];
     if (branch) args.push(branch);
 
@@ -401,7 +394,7 @@ router.post("/fetch", async (req, res, next) => {
     if (!repo) return res.status(400).json({ error: "repo path required" });
 
     const args = ["fetch"];
-    if (remote) args.push(remote);
+    if (remote) args.push("--", remote);
 
     const result = await gitInRepo(repo, args);
     if (result.exitCode !== 0) {
@@ -558,15 +551,110 @@ router.get("/events", async (req, res) => {
     const watcher = getRepoWatcher(repo);
 
     const write = (data: string) => {
-      res.write(data);
+      if (!res.writableEnded) {
+        res.write(data);
+      }
     };
 
     const remove = watcher.add(write);
 
-    req.on("close", remove);
-    req.socket.on("end", remove);
+    let removed = false;
+    const safeRemove = () => {
+      if (removed) return;
+      removed = true;
+      remove();
+    };
+
+    req.on("close", safeRemove);
+    req.socket.on("end", safeRemove);
+    req.socket.on("error", safeRemove);
   } catch {
-    res.status(500).end();
+    if (!res.headersSent) {
+      res.status(500).end();
+    }
+  }
+});
+
+router.post("/rebase-interactive", async (req, res, next) => {
+  try {
+    const { repo, baseCommit, todos, rewordMessages } = req.body;
+    if (!repo) return res.status(400).json({ error: "repo path required" });
+    if (!baseCommit) return res.status(400).json({ error: "base commit required" });
+    if (!todos?.length) return res.status(400).json({ error: "todo list required" });
+
+    const workDir = join(tmpdir(), `quanta-rebase-${randomUUID()}`);
+    await mkdir(workDir, { recursive: true });
+
+    try {
+      const todoLines = todos.map((entry: any) => {
+        const action = entry.action === "drop" ? "drop" : entry.action;
+        return `${action} ${entry.hash} ${entry.message}`;
+      });
+      const todoContent = todoLines.join("\n") + "\n";
+      const todoPath = join(workDir, "git-rebase-todo");
+      await writeFile(todoPath, todoContent, "utf-8");
+
+      const rewordsToHandle = todos.filter((entry: any) => entry.action === "reword");
+      const env: Record<string, string> = {};
+      env.GIT_SEQUENCE_EDITOR = `cp '${todoPath}'`;
+
+      if (rewordsToHandle.length > 0 && rewordMessages) {
+        const rewordDir = join(workDir, "rewords");
+        await mkdir(rewordDir, { recursive: true });
+        for (let i = 0; i < rewordsToHandle.length; i++) {
+          const entry = rewordsToHandle[i];
+          const msg = rewordMessages[entry.hash] || entry.message;
+          await writeFile(join(rewordDir, `${i}.txt`), msg, "utf-8");
+        }
+        const counterPath = join(workDir, "reword-index");
+        await writeFile(counterPath, "0", "utf-8");
+        const scriptLines = [
+          "#!/bin/bash",
+          `COMMIT_MSG_FILE="$1"`,
+          `INDEX=$(cat "${counterPath}")`,
+          `cat "${rewordDir}/$INDEX.txt" > "$COMMIT_MSG_FILE"`,
+          `echo $((INDEX + 1)) > "${counterPath}"`,
+        ];
+        const editorScriptPath = join(workDir, "editor.sh");
+        await writeFile(editorScriptPath, scriptLines.join("\n") + "\n", "utf-8");
+        await chmod(editorScriptPath, 0o755);
+        env.GIT_EDITOR = editorScriptPath;
+      }
+
+      const result = await gitInRepo(repo, ["rebase", "--interactive", baseCommit], env);
+
+      if (result.exitCode !== 0) {
+        const hasConflicts = result.stderr.includes("CONFLICT") || result.stderr.includes("could not apply");
+        await gitInRepo(repo, ["rebase", "--abort"]).catch(() => {});
+
+        return res.json({
+          success: false,
+          output: result.stderr || result.stdout,
+          conflicts: hasConflicts ? ["Rebase had conflicts and was aborted"] : undefined,
+        });
+      }
+
+      res.json({ success: true, output: result.stdout || result.stderr });
+    } finally {
+      await rm(workDir, { recursive: true, force: true }).catch(() => {});
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/rebase-abort", async (req, res, next) => {
+  try {
+    const { repo } = req.body;
+    if (!repo) return res.status(400).json({ error: "repo path required" });
+
+    const result = await gitInRepo(repo, ["rebase", "--abort"]);
+    if (result.exitCode !== 0) {
+      return res.status(500).json({ error: result.stderr });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
   }
 });
 

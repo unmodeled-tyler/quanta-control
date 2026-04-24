@@ -49,9 +49,9 @@ export function useKeyboardShortcuts({
     const isInput = INPUT_ELEMENTS.has(target.tagName) || target.isContentEditable;
     const meta = metaRef.current;
 
-    if (e.key >= "1" && e.key <= "6") {
+    if (e.key >= "1" && e.key <= "7") {
       if (isInput) return;
-      const views: View[] = ["status", "diff", "branches", "log", "stats", "stashes"];
+      const views: View[] = ["status", "diff", "branches", "log", "rebase", "stats", "stashes"];
       const index = Number.parseInt(e.key, 10) - 1;
       if (views[index]) {
         e.preventDefault();

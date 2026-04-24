@@ -6,8 +6,7 @@ import type { SystemStatus } from "../../types/system";
 import { SetupChecklist } from "../setup/SetupChecklist";
 import { SettingsView } from "../settings/SettingsView";
 import { useSettingsStore } from "../../stores/settingsStore";
-
-const RECENT_REPOS_KEY = "quanta-recent-repos";
+import { loadRecentRepos as loadRecentReposUtil } from "../../utils/recentRepos";
 
 interface RepoOpenerProps {
   onSelect: (path: string) => void;
@@ -36,7 +35,7 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
   }, []);
 
   useEffect(() => {
-    const stored = loadRecentRepos();
+    const stored = loadRecentReposUtil();
     api.getRecentRepos()
       .then((repos) => setRecent(mergeRecentRepos(stored, repos)))
       .catch(() => setRecent(stored));
@@ -299,15 +298,6 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
       </div>
     </div>
   );
-}
-
-function loadRecentRepos() {
-  try {
-    const stored = localStorage.getItem(RECENT_REPOS_KEY);
-    return stored ? (JSON.parse(stored) as Array<{ name: string; path: string }>) : [];
-  } catch {
-    return [];
-  }
 }
 
 function mergeRecentRepos(

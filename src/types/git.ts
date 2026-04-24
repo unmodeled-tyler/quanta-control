@@ -126,3 +126,27 @@ export interface StatusResult {
   untracked: number;
   conflicted: number;
 }
+
+export type RebaseAction = "pick" | "reword" | "squash" | "fixup" | "drop";
+
+export interface RebaseTodoEntry {
+  action: RebaseAction;
+  hash: string;
+  shortHash: string;
+  message: string;
+  originalAction: RebaseAction;
+  originalIndex: number;
+}
+
+export interface RebaseRequest {
+  repo: string;
+  baseCommit: string;
+  todos: RebaseTodoEntry[];
+  rewordMessages?: Record<string, string>;
+}
+
+export interface RebaseResult {
+  success: boolean;
+  output: string;
+  conflicts?: string[];
+}

@@ -87,8 +87,9 @@ export async function git(
 export async function gitInRepo(
   repoPath: string,
   args: string[],
+  env?: Record<string, string>,
 ): Promise<GitExecResult> {
-  return git(args, { cwd: repoPath });
+  return git(args, { cwd: repoPath, env });
 }
 
 export async function isGitRepo(path: string): Promise<boolean> {

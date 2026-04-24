@@ -7,6 +7,8 @@ import type {
   CommitActivity,
   StashEntry,
   DiffHunk,
+  RebaseRequest,
+  RebaseResult,
 } from "../types/git";
 import type { SystemStatus } from "../types/system";
 
@@ -14,10 +16,30 @@ const GIT_BASE = "/api/git";
 const REPO_BASE = "/api/repos";
 const SYSTEM_BASE = "/api/system";
 
+let cachedToken = "";
+
+async function getToken(): Promise<string> {
+  if (cachedToken) return cachedToken;
+  try {
+    const res = await fetch("/api/health");
+    const data = await res.json();
+    cachedToken = data.token ?? "";
+  } catch {
+    cachedToken = "";
+  }
+  return cachedToken;
+}
+
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = await getToken();
+  const hasBody = options?.body != null;
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: {
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { "x-quanta-token": token } : {}),
+      ...options?.headers,
+    },
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
@@ -226,5 +248,19 @@ export function dropStash(repo: string, name: string) {
   return api<{ success: boolean }>("/api/stash-drop", {
     method: "POST",
     body: JSON.stringify({ repo, name }),
+  });
+}
+
+export function rebaseInteractive(request: RebaseRequest) {
+  return api<RebaseResult>(`${GIT_BASE}/rebase-interactive`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
+
+export function rebaseAbort(repo: string) {
+  return api<{ success: boolean }>(`${GIT_BASE}/rebase-abort`, {
+    method: "POST",
+    body: JSON.stringify({ repo }),
   });
 }

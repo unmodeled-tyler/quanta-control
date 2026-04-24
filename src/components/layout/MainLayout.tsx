@@ -10,10 +10,11 @@ import {
   PanelLeftOpen,
   RefreshCw,
   Settings,
+  GitMerge,
 } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 
-export type View = "status" | "diff" | "branches" | "log" | "stats" | "stashes" | "settings";
+export type View = "status" | "diff" | "branches" | "log" | "stats" | "stashes" | "rebase" | "settings";
 
 const SIDEBAR_COLLAPSED_KEY = "quanta-sidebar-collapsed";
 
@@ -22,6 +23,7 @@ const NAV_ITEMS: Array<{ id: Exclude<View, "settings">; icon: typeof GitBranch; 
   { id: "diff", icon: GitCommit, label: "Diff" },
   { id: "branches", icon: GitBranch, label: "Branches" },
   { id: "log", icon: History, label: "History" },
+  { id: "rebase", icon: GitMerge, label: "Rebase" },
   { id: "stats", icon: ChartColumn, label: "Stats" },
   { id: "stashes", icon: Package, label: "Stashes" },
 ];

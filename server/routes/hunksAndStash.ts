@@ -1,18 +1,8 @@
 import { Router } from "express";
-import { appendFile, readFile } from "fs/promises";
 import { join } from "path";
 import { gitInRepo, expandPath, git } from "../services/gitExecutor.js";
-import { parseStatus, parseDiff, parseLog, parseBranches, parseRemotes } from "../services/gitParser.js";
 
 const router = Router();
-
-function requireRepoPath(req: any, _res: any, next: any) {
-  const repoPath = req.query.repo as string || req.body?.repo;
-  if (!repoPath) {
-    return next(new Error("repo path is required"));
-  }
-  next();
-}
 
 router.post("/apply-hunk", async (req, res, next) => {
   try {

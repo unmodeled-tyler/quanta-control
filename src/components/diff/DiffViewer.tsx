@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRepoStore } from "../../stores/repoStore";
 import type { FileDiff, DiffLine } from "../../types/git";
-import { applyHunk } from "../../services/api";
+import { applyHunk, getDiff } from "../../services/api";
 
 function DiffLineView({ line }: { line: DiffLine }) {
   const bg =
@@ -202,18 +202,15 @@ export function DiffViewer({
   const [loading, setLoading] = useState(false);
 
   const loadDiffs = useCallback(async () => {
-    let cancelled = false;
     setLoading(true);
     try {
-      const api = await import("../../services/api");
-      const next = await api.getDiff(repoPath, filePath ?? undefined, staged);
-      if (!cancelled) setDiffs(next);
+      const next = await getDiff(repoPath, filePath ?? undefined, staged);
+      setDiffs(next);
     } catch {
-      if (!cancelled) setDiffs([]);
+      setDiffs([]);
     } finally {
-      if (!cancelled) setLoading(false);
+      setLoading(false);
     }
-    return () => { cancelled = true; };
   }, [repoPath, filePath, staged]);
 
   useEffect(() => {
@@ -222,8 +219,20 @@ export function DiffViewer({
       setLoading(false);
       return;
     }
-    void loadDiffs();
-  }, [filePath, refreshKey, repoPath, showAllWhenNoFile, staged, loadDiffs]);
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const next = await getDiff(repoPath, filePath ?? undefined, staged);
+        if (!cancelled) setDiffs(next);
+      } catch {
+        if (!cancelled) setDiffs([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [filePath, refreshKey, repoPath, showAllWhenNoFile, staged]);
 
   return (
     <DiffContent

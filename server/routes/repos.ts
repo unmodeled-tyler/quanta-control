@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { readdir, stat } from "fs/promises";
-import { join, basename, resolve } from "path";
+import { join } from "path";
 import { homedir } from "os";
 import { isGitRepo, expandPath } from "../services/gitExecutor.js";
 
@@ -39,21 +39,24 @@ router.get("/browse", async (req, res) => {
 
   const hidden = req.query.hidden === "true";
 
-  for (const entry of entries) {
-    if (!hidden && entry.startsWith(".") && entry !== ".git") continue;
-    const fullPath = join(dir, entry);
-    try {
-      const s = await stat(fullPath);
-      if (s.isDirectory()) {
-        const childIsRepo = await isGitRepo(fullPath);
-        children.push({
-          name: entry,
-          path: fullPath,
-          isDirectory: true,
-          isGitRepo: childIsRepo,
-        });
-      }
-    } catch {}
+  const filtered = entries.filter((entry) => hidden || !entry.startsWith(".") || entry === ".git");
+
+  const results = await Promise.all(
+    filtered.map(async (entry) => {
+      const fullPath = join(dir, entry);
+      try {
+        const s = await stat(fullPath);
+        if (s.isDirectory()) {
+          const childIsRepo = await isGitRepo(fullPath);
+          return { name: entry, path: fullPath, isDirectory: true, isGitRepo: childIsRepo };
+        }
+      } catch {}
+      return null;
+    }),
+  );
+
+  for (const r of results) {
+    if (r) children.push(r);
   }
 
   children.sort((a, b) => {
@@ -80,23 +83,30 @@ router.get("/recent", async (_req, res) => {
 
   const repos: Array<{ name: string; path: string }> = [];
 
-  for (const dir of candidates) {
-    try {
-      const entries = await readdir(dir);
-      for (const entry of entries.slice(0, 50)) {
-        const fullPath = join(dir, entry);
-        try {
-          const s = await stat(fullPath);
-          if (s.isDirectory()) {
-            const valid = await isGitRepo(fullPath);
-            if (valid) {
-              repos.push({ name: entry, path: fullPath });
-            }
-          }
-        } catch {}
-      }
-    } catch {}
-  }
+  const checks = await Promise.all(
+    candidates.map(async (dir) => {
+      const found: Array<{ name: string; path: string }> = [];
+      try {
+        const entries = (await readdir(dir)).slice(0, 50);
+        const results = await Promise.all(
+          entries.map(async (entry) => {
+            const fullPath = join(dir, entry);
+            try {
+              const s = await stat(fullPath);
+              if (s.isDirectory() && await isGitRepo(fullPath)) {
+                return { name: entry, path: fullPath };
+              }
+            } catch {}
+            return null;
+          }),
+        );
+        for (const r of results) if (r) found.push(r);
+      } catch {}
+      return found;
+    }),
+  );
+
+  for (const batch of checks) repos.push(...batch);
 
   res.json(repos);
 });

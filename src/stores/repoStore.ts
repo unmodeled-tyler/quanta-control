@@ -47,7 +47,7 @@ interface RepoStore {
   lastStatusUpdateAt: number | null;
   lastChangeDetectedAt: number | null;
 
-  setRepo: (path: string) => void;
+  setRepo: (path: string | null) => void;
   refresh: () => Promise<void>;
   pollRepo: () => Promise<void>;
   refreshStatus: () => Promise<boolean>;
@@ -94,8 +94,9 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
         get().refreshBranches(),
         get().refreshLog(),
       ]);
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message });
     } finally {
       set({ loading: false });
     }
@@ -111,8 +112,9 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
         get().refreshBranches(),
         get().refreshLog(),
       ]);
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message });
     }
   },
 
@@ -133,8 +135,9 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
       });
 
       return hasChanged;
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message });
       return false;
     }
   },
@@ -145,8 +148,9 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
     try {
       const branches = await api.getBranches(repoPath);
       set({ branches });
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message });
     }
   },
 
@@ -156,8 +160,9 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
     try {
       const commits = await api.getLog(repoPath, 50);
       set({ commits });
-    } catch (err: any) {
-      set({ error: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message });
     }
   },
 

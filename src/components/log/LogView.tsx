@@ -1,6 +1,6 @@
 import { GitCommit, Files, Loader2, List, Network } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import * as api from "../../services/api";
 import { DiffContent } from "../diff/DiffViewer";
 import type { CommitInfo, FileDiff } from "../../types/git";
@@ -14,11 +14,29 @@ export function LogView() {
   const [diffCache, setDiffCache] = useState<Record<string, FileDiff[]>>({});
   const [loadingCommit, setLoadingCommit] = useState<string | null>(null);
   const [error, setError] = useState<{ hash: string; message: string } | null>(null);
+  const diffCacheRef = useRef(diffCache);
+  diffCacheRef.current = diffCache;
+
+  // Evict stale cache entries when commits list changes
+  useEffect(() => {
+    if (commits.length === 0) {
+      setDiffCache({});
+      return;
+    }
+    const validHashes = new Set(commits.map((c) => c.hash));
+    setDiffCache((prev) => {
+      const next: typeof prev = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (validHashes.has(k)) next[k] = v;
+      }
+      if (Object.keys(next).length === Object.keys(prev).length) return prev;
+      return next;
+    });
+  }, [commits]);
 
   useEffect(() => {
     if (commits.length === 0) {
       setSelectedCommit(null);
-      setDiffCache({});
       setLoadingCommit(null);
       setError(null);
       return;
@@ -30,10 +48,10 @@ export function LogView() {
   }, [commits, selectedCommit]);
 
   useEffect(() => {
-    if (!repoPath || !selectedCommit || diffCache[selectedCommit]) return;
+    if (!repoPath || !selectedCommit) return;
+    if (diffCacheRef.current[selectedCommit]) return;
 
     let cancelled = false;
-
     setLoadingCommit(selectedCommit);
     setError(null);
 
@@ -44,7 +62,7 @@ export function LogView() {
           ...current,
           [selectedCommit]: diffs,
         }));
-        setError((current) => (current?.hash === selectedCommit ? null : current));
+        setError((prev) => (prev?.hash === selectedCommit ? null : prev));
       })
       .catch((err: Error) => {
         if (cancelled) return;
@@ -55,13 +73,11 @@ export function LogView() {
       })
       .finally(() => {
         if (cancelled) return;
-        setLoadingCommit((current) => (current === selectedCommit ? null : current));
+        setLoadingCommit((prev) => (prev === selectedCommit ? null : prev));
       });
 
-    return () => {
-      cancelled = true;
-    };
-  }, [diffCache, repoPath, selectedCommit]);
+    return () => { cancelled = true; };
+  }, [repoPath, selectedCommit]);
 
   const activeCommit = useMemo(
     () => commits.find((commit) => commit.hash === selectedCommit) ?? null,

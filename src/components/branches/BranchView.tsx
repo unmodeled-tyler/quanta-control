@@ -26,8 +26,8 @@ export function BranchView() {
     try {
       await api.checkoutBranch(repoPath, name);
       await Promise.all([refreshBranches(), refreshStatus()]);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -38,8 +38,8 @@ export function BranchView() {
       await api.checkoutBranch(repoPath, newBranch.trim(), true);
       setNewBranch("");
       await Promise.all([refreshBranches(), refreshStatus()]);
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setCreating(false);
     }
@@ -50,8 +50,8 @@ export function BranchView() {
     try {
       await api.deleteBranch(repoPath, name);
       await refreshBranches();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     }
   };
 

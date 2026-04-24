@@ -4,13 +4,13 @@ import type {
   StagedStatus,
   StatusResult,
   DiffHunk,
-  DiffLine,
   FileDiff,
   CommitInfo,
   Branch,
   Remote,
-  RepoInfo,
 } from "../../src/types/git.js";
+
+export const LOG_SEPARATOR = "|||QUANTA|||";
 
 export function parseStatus(output: string): StatusResult {
   const files: GitFile[] = [];
@@ -119,12 +119,10 @@ export function parseDiff(output: string): FileDiff[] {
     if (!pathMatch) continue;
 
     const isBinary = block.includes("Binary files");
-    const additionsMatch = block.match(/^\+.*$/gm);
-    const deletionsMatch = block.match(/^-.*$/gm);
+    const additionsMatch = block.match(/^\+(?!\+\+).*$/gm);
+    const deletionsMatch = block.match(/^-(?!--).*$/gm);
 
     const hunks: DiffHunk[] = [];
-    const hunkRegex = /@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(.*)/g;
-    const hunkMatches = [...block.matchAll(hunkRegex)];
 
     if (!isBinary) {
       const lines = block.split("\n");
@@ -195,7 +193,7 @@ export function parseDiff(output: string): FileDiff[] {
 export function parseLog(output: string): CommitInfo[] {
   if (!output.trim()) return [];
 
-  const sep = "|||QUANTA|||";
+  const sep = LOG_SEPARATOR;
   const commits = output.split(sep).map((p) => p.trim()).filter(Boolean);
 
   return commits.map((raw) => {

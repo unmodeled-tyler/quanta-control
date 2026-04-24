@@ -27,7 +27,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
     try {
       await api.push(repoPath);
       await useRepoStore.getState().refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Push failed:", err);
     } finally {
       setPushing(false);

@@ -14,8 +14,8 @@ export function RemoteActions() {
     try {
       await api.fetchRemote(repoPath);
       await refresh();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(null);
     }
@@ -26,8 +26,8 @@ export function RemoteActions() {
     try {
       await api.pull(repoPath);
       await refresh();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(null);
     }
@@ -38,8 +38,8 @@ export function RemoteActions() {
     try {
       await api.push(repoPath);
       await refresh();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(null);
     }
