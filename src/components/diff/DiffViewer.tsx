@@ -6,9 +6,9 @@ import { applyHunk, getDiff } from "../../services/api";
 function DiffLineView({ line }: { line: DiffLine }) {
   const bg =
     line.type === "add"
-      ? "bg-emerald-500/10"
+      ? "bg-emerald-500/[0.06]"
       : line.type === "delete"
-        ? "bg-red-500/10"
+        ? "bg-red-500/[0.06]"
         : "";
   const text =
     line.type === "add"
@@ -19,11 +19,11 @@ function DiffLineView({ line }: { line: DiffLine }) {
   const prefix = line.type === "add" ? "+" : line.type === "delete" ? "-" : " ";
 
   return (
-    <div className={`flex font-mono text-xs ${bg}`}>
-      <span className="w-12 flex-shrink-0 text-right pr-2 text-zinc-600 select-none">
+    <div className={`flex font-mono text-xs transition-colors duration-75 ${bg}`}>
+      <span className="w-12 flex-shrink-0 text-right pr-2 text-zinc-600/70 select-none">
         {line.oldLineNumber ?? ""}
       </span>
-      <span className="w-12 flex-shrink-0 text-right pr-2 text-zinc-600 select-none">
+      <span className="w-12 flex-shrink-0 text-right pr-2 text-zinc-600/70 select-none">
         {line.newLineNumber ?? ""}
       </span>
       <span className={`w-4 flex-shrink-0 select-none ${text}`}>{prefix}</span>
@@ -77,7 +77,7 @@ function HunkActions({
       <button
         onClick={handleStage}
         disabled={busy}
-        className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-600/30 transition-colors disabled:opacity-40"
+        className="text-[10px] px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-emerald-600/15 text-emerald-400 border border-emerald-600/20 transition-all duration-150 disabled:opacity-40"
         title="Stage hunk"
       >
         Stage
@@ -85,7 +85,7 @@ function HunkActions({
       <button
         onClick={handleUnstage}
         disabled={busy}
-        className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 hover:bg-yellow-600/20 text-yellow-400 border border-yellow-600/30 transition-colors disabled:opacity-40"
+        className="text-[10px] px-2 py-0.5 rounded bg-zinc-800/80 hover:bg-yellow-600/15 text-yellow-400 border border-yellow-600/20 transition-all duration-150 disabled:opacity-40"
         title="Unstage hunk"
       >
         Unstage
@@ -107,7 +107,7 @@ function DiffHunkView({
     <div>
       {hunks.map((hunk, i) => (
         <div key={i}>
-          <div className="px-3 py-1 bg-blue-500/10 text-blue-400 text-xs font-mono">
+          <div className="px-3 py-1.5 bg-blue-500/[0.06] text-blue-400/80 text-xs font-mono border-y border-zinc-800/40">
             <div className="flex items-center justify-between">
               <span>
                 @@ -{hunk.oldStart},{hunk.oldLines} +{hunk.newStart},{hunk.newLines}@@{" "}
@@ -157,8 +157,8 @@ export function DiffContent({
   return (
     <div className="h-full overflow-y-auto">
       {diffs.map((diff, i) => (
-        <div key={i} className="border-b border-zinc-800 last:border-0">
-          <div className="px-3 py-2 bg-zinc-900/50 border-b border-zinc-800 flex items-center gap-2">
+        <div key={i} className="border-b border-zinc-800/60 last:border-0">
+          <div className="px-3 py-2 bg-zinc-900/40 border-b border-zinc-800/60 flex items-center gap-2">
             <span className="text-xs font-mono text-zinc-300">{diff.path}</span>
             {diff.oldPath && (
               <span className="text-xs text-zinc-600">

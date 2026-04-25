@@ -79,14 +79,14 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
   if (!repoPath || !status) return null;
 
   return (
-    <div className="h-full overflow-y-auto border-t border-zinc-800 bg-zinc-950">
+    <div className="h-full overflow-y-auto border-t border-zinc-800/60 bg-zinc-950/40">
       <div className="p-3">
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Commit message..."
           rows={3}
-          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm resize-none focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder-zinc-600"
+          className="w-full px-3 py-2 bg-zinc-900/80 border border-zinc-700/80 rounded-md text-sm resize-none focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/20 placeholder-zinc-600 transition-all duration-150"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -98,7 +98,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
           <button
             onClick={handleCommit}
             disabled={!message.trim() || !hasChanges || committing}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 rounded-md text-sm font-medium transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:hover:bg-emerald-600 rounded-md text-sm font-medium transition-all duration-150 ease-out shadow-sm shadow-black/10 hover:shadow-md hover:shadow-black/20"
           >
             {committing ? (
               <Check className="w-3.5 h-3.5 animate-pulse" />

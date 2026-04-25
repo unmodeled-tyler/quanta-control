@@ -134,7 +134,7 @@ export function RebaseView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-zinc-800 bg-zinc-950/60 px-4 py-3">
+      <div className="border-b border-zinc-800/60 bg-zinc-950/40 px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <div>
             <h2 className="text-sm font-semibold text-zinc-100">Interactive Rebase</h2>
@@ -186,8 +186,8 @@ export function RebaseView() {
         <div
           className={`border-b px-4 py-3 text-xs ${
             result.success
-              ? "border-emerald-900/50 bg-emerald-950/40 text-emerald-300"
-              : "border-red-900/50 bg-red-950/40 text-red-300"
+              ? "border-emerald-900/40 bg-emerald-950/30 text-emerald-300"
+              : "border-red-900/40 bg-red-950/30 text-red-300"
           }`}
         >
           <div className="flex items-start gap-2">
@@ -241,7 +241,7 @@ export function RebaseView() {
         ))}
       </div>
 
-      <div className="border-t border-zinc-800 bg-zinc-950/60 px-4 py-2">
+      <div className="border-t border-zinc-800/60 bg-zinc-950/40 px-4 py-2">
         <div className="flex items-center justify-between text-xs text-zinc-600">
           <span>
             Base: {baseCommit ? baseCommit.shortHash : "root"} ({baseCommit ? baseCommit.message.slice(0, 40) : "initial"})
@@ -311,12 +311,12 @@ function RebaseTodoItem({
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
-      className={`group flex items-center gap-2 border-b border-zinc-800/50 px-3 py-2 transition-colors ${
+      className={`group flex items-center gap-2 border-b border-zinc-800/40 px-3 py-2 transition-all duration-150 ease-out ${
         isDropped
           ? "opacity-40 bg-zinc-950/60"
           : isEditingMessage
-            ? "bg-zinc-800/80 ring-1 ring-amber-600/30"
-            : "hover:bg-zinc-900/60"
+            ? "bg-zinc-800/60 ring-1 ring-amber-600/20"
+            : "hover:bg-zinc-900/40"
       }`}
     >
       <div

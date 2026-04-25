@@ -228,7 +228,8 @@ function CommitRow({
         fill={isSelected ? "#10b981" : "#18181b"}
         stroke={color}
         strokeWidth={isSelected ? 2.5 : 1.5}
-        className="cursor-pointer transition-all duration-150"
+        className="cursor-pointer transition-all duration-150 ease-out"
+        style={isSelected ? { filter: "drop-shadow(0 0 4px rgba(16, 185, 129, 0.3))" } : undefined}
         onClick={() => onSelect(commit.hash)}
       />
       <foreignObject x={labelX} y={y - CELL_H / 2 + NODE_R} width={labelWidth} height={CELL_H}>

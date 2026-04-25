@@ -77,7 +77,7 @@ export function StashView() {
           return (
             <div
               key={stash.name}
-              className="flex items-center justify-between px-4 py-3 rounded-md border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-900/70 transition-colors"
+              className="flex items-center justify-between px-4 py-3 rounded-lg border border-zinc-800/60 bg-zinc-900/30 hover:bg-zinc-900/50 transition-all duration-150 ease-out shadow-sm shadow-black/5 hover:shadow-md hover:shadow-black/10"
             >
               <div className="min-w-0">
                 <div className="text-sm font-medium text-zinc-200 truncate">

@@ -207,8 +207,8 @@ export default function App() {
 
   return (
     <MainLayout currentView={view} onViewChange={setView}>
-      <div className="h-full flex flex-col">
-        <header className="h-10 border-b border-zinc-800 flex items-center justify-between px-3">
+      <div className="h-full flex flex-col bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900/20">
+        <header className="h-10 border-b border-zinc-800/60 flex items-center justify-between px-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setRepo("")}
@@ -365,7 +365,7 @@ function ResizeHandle({
   return (
     <div
       onPointerDown={onPointerDown}
-      className={`group relative flex-shrink-0 select-none ${
+      className={`group relative flex-shrink-0 select-none transition-colors duration-150 ${
         orientation === "vertical"
           ? "h-full w-1.5 cursor-col-resize"
           : "h-1.5 w-full cursor-row-resize"
@@ -374,8 +374,8 @@ function ResizeHandle({
       aria-orientation={orientation}
     >
       <div
-        className={`absolute inset-0 transition-colors group-hover:bg-emerald-500/20 ${
-          orientation === "vertical" ? "border-x border-zinc-800" : "border-y border-zinc-800"
+        className={`absolute inset-0 transition-colors duration-150 group-hover:bg-emerald-500/20 ${
+          orientation === "vertical" ? "border-x border-zinc-800/40" : "border-y border-zinc-800/40"
         }`}
       />
     </div>
@@ -384,8 +384,8 @@ function ResizeHandle({
 
 function CleanWorkspace() {
   return (
-    <div className="flex h-full items-center justify-center bg-zinc-950/30">
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 px-6 py-5 text-center">
+    <div className="flex h-full items-center justify-center">
+      <div className="rounded-2xl border border-zinc-800/60 bg-zinc-900/40 px-6 py-5 text-center shadow-lg shadow-black/10">
         <div className="text-sm font-medium text-zinc-200">Working tree is clean</div>
         <div className="mt-1 text-xs text-zinc-500">
           No local changes to review right now. This view will repopulate when new edits land.

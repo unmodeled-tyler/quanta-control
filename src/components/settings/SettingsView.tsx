@@ -47,7 +47,7 @@ export function SettingsView() {
           <SectionHeader icon={<User className="w-4 h-4" />} title="Git Identity" />
           <div className="space-y-3 mt-3">
             {gitConfig && (
-              <div className="px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md">
+              <div className="px-3 py-2 bg-zinc-900/60 border border-zinc-800/60 rounded-md shadow-sm shadow-black/5">
                 <div className="text-xs text-zinc-500 mb-1">Detected from git config</div>
                 <div className="text-sm text-zinc-300">
                   {gitConfig.name} &lt;{gitConfig.email}&gt;
@@ -165,14 +165,14 @@ export function SettingsView() {
           </div>
         </section>
 
-        <section className="pt-4 border-t border-zinc-800">
+        <section className="pt-4 border-t border-zinc-800/60">
           <button
             onClick={() => {
               if (confirm("Reset all settings to defaults?")) {
                 resetSettings();
               }
             }}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-150"
           >
             <RotateCcw className="w-4 h-4" />
             Reset to Defaults
@@ -244,7 +244,7 @@ function TextInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-700 rounded-md text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 placeholder-zinc-600"
+        className="w-full px-3 py-1.5 bg-zinc-900/60 border border-zinc-700/80 rounded-md text-sm focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/20 placeholder-zinc-600 transition-all duration-150"
       />
     </div>
   );

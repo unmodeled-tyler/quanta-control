@@ -62,11 +62,11 @@ export function MainLayout({
   return (
     <div className="flex h-screen bg-zinc-950 text-zinc-100">
       <nav
-        className={`flex flex-shrink-0 flex-col border-r border-zinc-800 bg-zinc-950 transition-[width] duration-200 ${
+        className={`flex flex-shrink-0 flex-col border-r border-zinc-800/80 bg-zinc-950 transition-[width] duration-200 ease-out shadow-lg shadow-black/10 ${
           isCollapsed ? "w-16" : "w-48"
         }`}
       >
-        <div className="border-b border-zinc-800 p-3">
+        <div className="border-b border-zinc-800/60 p-3">
           <div
             className={`flex items-center ${
               isCollapsed ? "flex-col justify-center gap-3" : "justify-between gap-2"
@@ -83,7 +83,7 @@ export function MainLayout({
             </div>
             <button
               onClick={toggleCollapsed}
-              className="rounded-md p-1.5 text-zinc-500 transition-colors hover:bg-zinc-900 hover:text-zinc-300"
+              className="rounded-md p-1.5 text-zinc-500 transition-all duration-150 ease-out hover:bg-zinc-800/80 hover:text-zinc-300"
               title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
               {isCollapsed ? (
@@ -96,11 +96,11 @@ export function MainLayout({
         </div>
 
         {repoPath && (
-          <div className="p-3 border-b border-zinc-800">
+          <div className="p-3 border-b border-zinc-800/60">
             <button
               onClick={refresh}
               disabled={loading}
-              className={`w-full text-xs text-zinc-400 transition-colors hover:text-zinc-200 ${
+              className={`w-full text-xs text-zinc-400 transition-all duration-150 ease-out hover:text-zinc-200 ${
                 isCollapsed ? "flex justify-center" : "flex items-center gap-2"
               }`}
               title={status?.branch || "Refresh"}
@@ -117,10 +117,10 @@ export function MainLayout({
               key={id}
               onClick={() => onViewChange(id)}
               title={label}
-              className={`w-full rounded-md px-3 py-2 text-sm transition-colors ${
+              className={`w-full rounded-md px-3 py-2 text-sm transition-all duration-150 ease-out ${
                 currentView === id
-                  ? "bg-zinc-800 text-zinc-100"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                  ? "bg-zinc-800/80 text-zinc-100 shadow-sm shadow-black/10"
+                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
               } ${isCollapsed ? "flex justify-center" : "flex items-center gap-2"}`}
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
@@ -129,14 +129,14 @@ export function MainLayout({
           ))}
         </div>
 
-        <div className="p-2 border-t border-zinc-800">
+        <div className="p-2 border-t border-zinc-800/60">
           <button
             onClick={() => onViewChange("settings")}
             title="Settings"
-            className={`w-full rounded-md px-3 py-2 text-sm transition-colors ${
+            className={`w-full rounded-md px-3 py-2 text-sm transition-all duration-150 ease-out ${
               currentView === "settings"
-                ? "bg-zinc-800 text-zinc-100"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "bg-zinc-800/80 text-zinc-100 shadow-sm shadow-black/10"
+                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/60"
             } ${isCollapsed ? "flex justify-center" : "flex items-center gap-2"}`}
           >
             <Settings className="h-4 w-4 flex-shrink-0" />

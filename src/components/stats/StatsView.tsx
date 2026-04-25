@@ -69,7 +69,7 @@ function SummaryCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+    <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 shadow-sm shadow-black/5 transition-all duration-150 hover:bg-zinc-900/50 hover:shadow-md hover:shadow-black/10">
       <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-500">
         {icon}
         {label}
@@ -179,7 +179,7 @@ export function StatsView({ onOpenSettings }: { onOpenSettings: () => void }) {
       </div>
 
       <div className="space-y-6 p-4">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 shadow-sm shadow-black/5">
           <div className="text-xs uppercase tracking-wider text-zinc-500">Tracking identity</div>
           <div className="mt-2 text-sm text-zinc-200">
             {detectedIdentity.name || "Unknown author"}
@@ -191,11 +191,11 @@ export function StatsView({ onOpenSettings }: { onOpenSettings: () => void }) {
         </div>
 
         {loading ? (
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-8 text-sm text-zinc-500">
+          <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-8 text-sm text-zinc-500 shadow-sm shadow-black/5">
             Building commit activity…
           </div>
         ) : error ? (
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.03] p-5 shadow-sm shadow-black/5">
             <div className="text-sm font-medium text-amber-200">Stats unavailable</div>
             <p className="mt-2 text-sm text-zinc-400">{error}</p>
             <button
@@ -231,7 +231,7 @@ export function StatsView({ onOpenSettings }: { onOpenSettings: () => void }) {
               />
             </div>
 
-            <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+            <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/40 p-4 shadow-sm shadow-black/5">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
                   <div className="text-sm font-medium text-zinc-100">
@@ -266,7 +266,7 @@ export function StatsView({ onOpenSettings }: { onOpenSettings: () => void }) {
                                 ? `${day.count} commit${day.count === 1 ? "" : "s"} on ${toLocalDateParts(day.date).label}`
                                 : ""
                             }
-                            className={`h-3.5 w-3.5 rounded-[3px] border border-zinc-800 ${
+                            className={`h-3.5 w-3.5 rounded-[3px] border border-zinc-800/40 ${
                               !day
                                 ? "bg-transparent"
                                 : level === 0
@@ -292,7 +292,7 @@ export function StatsView({ onOpenSettings }: { onOpenSettings: () => void }) {
                 {[0, 1, 2, 3, 4].map((level) => (
                   <div
                     key={level}
-                    className={`h-3.5 w-3.5 rounded-[3px] border border-zinc-800 ${
+                    className={`h-3.5 w-3.5 rounded-[3px] border border-zinc-800/40 ${
                       level === 0
                         ? "bg-zinc-950"
                         : level === 1

@@ -155,7 +155,7 @@ export function LogView() {
         className="flex flex-shrink-0 flex-col border-r border-zinc-800"
         style={{ width: historyPanelWidth }}
       >
-        <div className="flex items-center justify-between p-3 border-b border-zinc-800">
+        <div className="flex items-center justify-between p-3 border-b border-zinc-800/60">
           <h2 className="text-sm font-semibold">History</h2>
           <div
             role="group"
@@ -168,9 +168,9 @@ export function LogView() {
               aria-label="List view"
               aria-pressed={mode === "list"}
               title="List view"
-              className={`px-2 py-1 text-xs transition-colors ${
+              className={`px-2 py-1 text-xs transition-all duration-150 ease-out ${
                 mode === "list"
-                  ? "bg-zinc-700 text-zinc-100"
+                  ? "bg-zinc-700 text-zinc-100 shadow-sm shadow-black/10"
                   : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
@@ -182,9 +182,9 @@ export function LogView() {
               aria-label="Graph view"
               aria-pressed={mode === "graph"}
               title="Graph view"
-              className={`px-2 py-1 text-xs transition-colors ${
+              className={`px-2 py-1 text-xs transition-all duration-150 ease-out ${
                 mode === "graph"
-                  ? "bg-zinc-700 text-zinc-100"
+                  ? "bg-zinc-700 text-zinc-100 shadow-sm shadow-black/10"
                   : "text-zinc-500 hover:text-zinc-300"
               }`}
             >
@@ -232,7 +232,7 @@ export function LogView() {
       <div className="min-w-0 flex-1">
         {activeCommit ? (
           <div className="flex h-full flex-col">
-            <div className="border-b border-zinc-800 bg-zinc-950/60 px-4 py-3">
+            <div className="border-b border-zinc-800/60 bg-zinc-950/40 px-4 py-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="text-sm font-medium text-zinc-100 break-words">
@@ -314,8 +314,8 @@ function CommitItem({
   return (
     <button
       onClick={() => onSelect(commit.hash)}
-      className={`w-full text-left px-3 py-2.5 border-b border-zinc-800/50 hover:bg-zinc-900 transition-colors ${
-        isSelected ? "bg-zinc-800" : ""
+      className={`w-full text-left px-3 py-2.5 border-b border-zinc-800/50 hover:bg-zinc-900/60 transition-all duration-150 ease-out ${
+        isSelected ? "bg-zinc-800/80" : ""
       }`}
     >
       <div className="flex items-start gap-2">

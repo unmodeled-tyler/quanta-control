@@ -57,12 +57,12 @@ export function BranchView() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="p-3 border-b border-zinc-800">
+      <div className="p-3 border-b border-zinc-800/60">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold">Branches</h2>
           <button
             onClick={() => refreshBranches()}
-            className="p-1 rounded hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300"
+            className="p-1 rounded hover:bg-zinc-800/80 text-zinc-500 hover:text-zinc-300 transition-all duration-150"
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
@@ -89,7 +89,7 @@ export function BranchView() {
       </div>
 
       {currentBranch && (
-        <div className="p-3 border-b border-zinc-800 bg-emerald-500/5">
+        <div className="p-3 border-b border-zinc-800/60 bg-emerald-500/[0.04]">
           <div className="text-xs text-zinc-500 mb-1">Current</div>
           <div className="flex items-center gap-2">
             <GitBranch className="w-4 h-4 text-emerald-400" />
@@ -110,7 +110,7 @@ export function BranchView() {
             .map((branch) => (
               <div
                 key={branch.name}
-                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-zinc-900 group"
+                className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-zinc-900/60 group transition-all duration-150 ease-out"
               >
                 <GitBranch className="w-3.5 h-3.5 text-zinc-500" />
                 <span className="flex-1 text-sm text-zinc-300 truncate">
@@ -118,14 +118,14 @@ export function BranchView() {
                 </span>
                 <button
                   onClick={() => handleCheckout(branch.name)}
-                  className="hidden group-hover:flex items-center gap-1 text-xs text-zinc-400 hover:text-emerald-400"
+                  className="hidden group-hover:flex items-center gap-1 text-xs text-zinc-400 hover:text-emerald-400 transition-colors duration-150"
                 >
                   <ArrowRight className="w-3 h-3" />
                   Switch
                 </button>
                 <button
                   onClick={() => handleDelete(branch.name)}
-                  className="hidden group-hover:block p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-red-400"
+                  className="hidden group-hover:block p-1 rounded hover:bg-zinc-800/80 text-zinc-400 hover:text-red-400 transition-all duration-150"
                 >
                   <Trash2 className="w-3 h-3" />
                 </button>
@@ -142,7 +142,7 @@ export function BranchView() {
               {remoteBranches.slice(0, 20).map((branch) => (
                 <div
                   key={branch.name}
-                  className="flex items-center gap-2 px-2 py-1.5 text-sm text-zinc-500"
+                  className="flex items-center gap-2 px-2 py-1.5 text-sm text-zinc-500 transition-colors duration-150 hover:text-zinc-400"
                 >
                   <GitBranch className="w-3.5 h-3.5" />
                   <span className="truncate">{branch.name}</span>

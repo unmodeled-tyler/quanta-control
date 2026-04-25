@@ -107,10 +107,10 @@ function FileItem({
       <div
         onClick={() => onSelect(file)}
         onContextMenu={handleContextMenu}
-        className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm group transition-colors ${
+        className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm group transition-all duration-150 ease-out ${
           isSelected
-            ? "bg-zinc-800 border-l-2 border-emerald-500"
-            : "hover:bg-zinc-900 border-l-2 border-transparent"
+            ? "bg-zinc-800/80 border-l-2 border-emerald-500"
+            : "hover:bg-zinc-900/60 border-l-2 border-transparent"
         }`}
       >
         <span
@@ -232,7 +232,7 @@ export function StatusView({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-3 border-b border-zinc-800 flex items-center justify-between">
+      <div className="p-3 border-b border-zinc-800/60 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Changes</h2>
           <span className="text-xs text-zinc-500">
@@ -269,10 +269,10 @@ export function StatusView({
 
       <div className="flex-1 overflow-y-auto">
         {stagedFiles.length > 0 && (
-          <div className="border-b border-zinc-800">
+          <div className="border-b border-zinc-800/50">
             <button
               onClick={() => setStagedOpen(!stagedOpen)}
-              className="w-full flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 bg-zinc-900/50"
+              className="w-full flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 bg-zinc-900/50 transition-colors duration-150"
             >
               {stagedOpen ? (
                 <ChevronDown className="w-3 h-3" />
@@ -299,7 +299,7 @@ export function StatusView({
           <div>
             <button
               onClick={() => setUnstagedOpen(!unstagedOpen)}
-              className="w-full flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 bg-zinc-900/50"
+              className="w-full flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-200 bg-zinc-900/50 transition-colors duration-150"
             >
               {unstagedOpen ? (
                 <ChevronDown className="w-3 h-3" />
@@ -324,7 +324,9 @@ export function StatusView({
 
         {status.files.length === 0 && (
           <div className="flex items-center justify-center h-32 text-sm text-zinc-600">
-            No changes detected
+            <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/30 px-5 py-4 text-center shadow-sm shadow-black/5">
+              No changes detected
+            </div>
           </div>
         )}
       </div>
