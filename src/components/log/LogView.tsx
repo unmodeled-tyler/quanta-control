@@ -7,6 +7,28 @@ import type { CommitInfo, FileDiff } from "../../types/git";
 import { CommitGraph } from "./CommitGraph";
 import { formatAbsoluteDate, getRelativeTime } from "../../utils/time";
 
+const HISTORY_PANEL_WIDTH_KEY = "quanta-layout-history-width";
+
+function loadStoredNumber(key: string, fallback: number) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+type DragState = {
+  startPointer: number;
+  startSize: number;
+} | null;
+
 export function LogView() {
   const { repoPath, commits } = useRepoStore();
   const [mode, setMode] = useState<"list" | "graph">("graph");
@@ -14,6 +36,10 @@ export function LogView() {
   const [diffCache, setDiffCache] = useState<Record<string, FileDiff[]>>({});
   const [loadingCommit, setLoadingCommit] = useState<string | null>(null);
   const [error, setError] = useState<{ hash: string; message: string } | null>(null);
+  const [historyPanelWidth, setHistoryPanelWidth] = useState(() =>
+    loadStoredNumber(HISTORY_PANEL_WIDTH_KEY, 360),
+  );
+  const [dragState, setDragState] = useState<DragState>(null);
   const diffCacheRef = useRef(diffCache);
   diffCacheRef.current = diffCache;
 
@@ -79,6 +105,35 @@ export function LogView() {
     return () => { cancelled = true; };
   }, [repoPath, selectedCommit]);
 
+  useEffect(() => {
+    if (!dragState) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const nextWidth = clamp(
+        dragState.startSize + (event.clientX - dragState.startPointer),
+        240,
+        640,
+      );
+      setHistoryPanelWidth(nextWidth);
+    };
+
+    const handlePointerUp = () => setDragState(null);
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [dragState]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HISTORY_PANEL_WIDTH_KEY, String(historyPanelWidth));
+    } catch {}
+  }, [historyPanelWidth]);
+
   const activeCommit = useMemo(
     () => commits.find((commit) => commit.hash === selectedCommit) ?? null,
     [commits, selectedCommit],
@@ -96,7 +151,10 @@ export function LogView() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <div className="flex w-[360px] flex-shrink-0 flex-col border-r border-zinc-800">
+      <div
+        className="flex flex-shrink-0 flex-col border-r border-zinc-800"
+        style={{ width: historyPanelWidth }}
+      >
         <div className="flex items-center justify-between p-3 border-b border-zinc-800">
           <h2 className="text-sm font-semibold">History</h2>
           <div
@@ -162,6 +220,15 @@ export function LogView() {
         )}
       </div>
 
+      <ResizeHandle
+        onPointerDown={(event) =>
+          setDragState({
+            startPointer: event.clientX,
+            startSize: historyPanelWidth,
+          })
+        }
+      />
+
       <div className="min-w-0 flex-1">
         {activeCommit ? (
           <div className="flex h-full flex-col">
@@ -210,6 +277,23 @@ export function LogView() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function ResizeHandle({
+  onPointerDown,
+}: {
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
+}) {
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      className="group relative flex h-full w-1.5 flex-shrink-0 cursor-col-resize select-none"
+      role="separator"
+      aria-orientation="vertical"
+    >
+      <div className="absolute inset-0 border-x border-zinc-800 transition-colors group-hover:bg-emerald-500/20" />
     </div>
   );
 }

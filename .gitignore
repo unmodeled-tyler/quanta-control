@@ -8,6 +8,9 @@ build/
 *.log
 npm-debug.log*
 .codex
+.kilo/
+.claude
+.venv/
 test-results/.last-run.json
 package-lock.json
 test-git.mjs

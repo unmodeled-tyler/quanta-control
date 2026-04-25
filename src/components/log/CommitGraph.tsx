@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import type { CommitInfo } from "../../types/git";
 import { getRelativeTime } from "../../utils/time";
 
@@ -114,10 +114,32 @@ function computeLayout(commits: CommitInfo[]): LayoutResult {
 }
 
 export function CommitGraph({ commits, selectedCommit, onSelectCommit }: CommitGraphProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+    observer.observe(el);
+    setContainerWidth(el.clientWidth);
+    return () => observer.disconnect();
+  }, []);
+
   const { nodes, maxLane } = useMemo(() => computeLayout(commits), [commits]);
 
-  const svgWidth = Math.max(PAD_L + (maxLane + 1) * COL_W + PAD_R, 120);
+  const minSvgWidth = Math.max(PAD_L + (maxLane + 1) * COL_W + PAD_R, 120);
+  const svgWidth = Math.max(minSvgWidth, containerWidth);
   const svgHeight = Math.max(PAD_Y * 2 + commits.length * CELL_H, 100);
+
+  // Align all labels in a single column to the right of the graph lanes
+  const labelX = PAD_L + (maxLane + 1) * COL_W + 10;
+  const labelWidth = Math.max(svgWidth - labelX - PAD_R, 40);
 
   const edges = useMemo(() => {
     const hashToNode = new Map<string, LayoutNode>();
@@ -152,7 +174,7 @@ export function CommitGraph({ commits, selectedCommit, onSelectCommit }: CommitG
   }, [nodes]);
 
   return (
-    <div className="h-full overflow-auto">
+    <div ref={containerRef} className="h-full overflow-auto">
       <svg
         width={svgWidth}
         height={svgHeight}
@@ -170,7 +192,8 @@ export function CommitGraph({ commits, selectedCommit, onSelectCommit }: CommitG
               key={node.commit.hash}
               node={node}
               isSelected={isSelected}
-              labelWidth={Math.max(svgWidth - node.x - 14 - PAD_R, 40)}
+              labelX={labelX}
+              labelWidth={labelWidth}
               onSelect={onSelectCommit}
             />
           );
@@ -183,11 +206,13 @@ export function CommitGraph({ commits, selectedCommit, onSelectCommit }: CommitG
 function CommitRow({
   node,
   isSelected,
+  labelX,
   labelWidth,
   onSelect,
 }: {
   node: LayoutNode;
   isSelected: boolean;
+  labelX: number;
   labelWidth: number;
   onSelect: (hash: string) => void;
 }) {
@@ -206,7 +231,7 @@ function CommitRow({
         className="cursor-pointer transition-all duration-150"
         onClick={() => onSelect(commit.hash)}
       />
-      <foreignObject x={x + 14} y={y - CELL_H / 2 + NODE_R} width={labelWidth} height={CELL_H}>
+      <foreignObject x={labelX} y={y - CELL_H / 2 + NODE_R} width={labelWidth} height={CELL_H}>
         <button
           type="button"
           onClick={() => onSelect(commit.hash)}
@@ -215,19 +240,19 @@ function CommitRow({
             isSelected ? "text-emerald-400" : "text-zinc-300 hover:text-zinc-200"
           }`}
         >
-          <div className="flex items-center gap-1.5">
-            <span className="truncate font-medium">{commit.message}</span>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate font-medium leading-tight">{commit.message}</span>
             {commit.refs.length > 0 && (
-              <span className="shrink-0 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400">
+              <span className="shrink-0 rounded-full bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400 leading-none">
                 {commit.refs.join(", ")}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
-            <span className="font-mono">{commit.shortHash}</span>
-            <span className="text-zinc-700">•</span>
+          <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 min-w-0">
+            <span className="shrink-0 font-mono">{commit.shortHash}</span>
+            <span className="shrink-0 text-zinc-700">•</span>
             <span className="truncate">{commit.author}</span>
-            <span className="text-zinc-700">•</span>
+            <span className="shrink-0 text-zinc-700">•</span>
             <span className="shrink-0">{relative}</span>
           </div>
         </button>
