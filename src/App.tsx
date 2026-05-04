@@ -13,6 +13,7 @@ import { SettingsView } from "./components/settings/SettingsView";
 import { StatsView } from "./components/stats/StatsView";
 import { StashView } from "./components/stashes/StashView";
 import { RebaseView } from "./components/rebase/RebaseView";
+import { ExplorerView } from "./components/explorer/ExplorerView";
 import { useSettingsStore } from "./stores/settingsStore";
 import type { GitFile } from "./types/git";
 import { connectRepoEvents, disconnectRepoEvents } from "./services/sse";
@@ -337,6 +338,12 @@ export default function App() {
           {view === "settings" && (
             <div className="flex-1">
               <SettingsView />
+            </div>
+          )}
+
+          {view === "explorer" && (
+            <div className="flex-1">
+              <ExplorerView />
             </div>
           )}
         </div>

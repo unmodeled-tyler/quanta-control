@@ -148,3 +148,33 @@ export interface RebaseResult {
   output: string;
   conflicts?: string[];
 }
+
+// ── Explorer types ──
+
+export interface GrepMatch {
+  file: string;
+  line: number;
+  content: string;
+}
+
+export interface BlameLine {
+  hash: string;
+  shortHash: string;
+  author: string;
+  authorEmail: string;
+  date: string;
+  line: number;
+  content: string;
+  summary: string;
+}
+
+export type FileNodeType = "file" | "directory";
+
+export interface FileTreeNode {
+  name: string;
+  path: string;
+  type: FileNodeType;
+  children?: FileTreeNode[];
+}
+
+export type PickaxeMode = "S" | "G";

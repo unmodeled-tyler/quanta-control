@@ -8,6 +8,7 @@ import gitRoutes from "./routes/git.js";
 import repoRoutes from "./routes/repos.js";
 import systemRoutes from "./routes/system.js";
 import { featureRoutes } from "./routes/hunksAndStash.js";
+import explorerRoutes from "./routes/explorer.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -72,6 +73,7 @@ export function createApp() {
   app.use("/api/repos", repoRoutes);
   app.use("/api/system", systemRoutes);
   app.use("/api", featureRoutes);
+  app.use("/api/explorer", explorerRoutes);
 
   if (existsSync(clientDist)) {
     app.use(express.static(clientDist));

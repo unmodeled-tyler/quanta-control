@@ -11,14 +11,16 @@ import {
   RefreshCw,
   Settings,
   GitMerge,
+  FolderSearch,
 } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 
-export type View = "status" | "diff" | "branches" | "log" | "stats" | "stashes" | "rebase" | "settings";
+export type View = "status" | "diff" | "branches" | "log" | "stats" | "stashes" | "rebase" | "settings" | "explorer";
 
 const SIDEBAR_COLLAPSED_KEY = "quanta-sidebar-collapsed";
 
 const NAV_ITEMS: Array<{ id: Exclude<View, "settings">; icon: typeof GitBranch; label: string }> = [
+  { id: "explorer", icon: FolderSearch, label: "Explorer" },
   { id: "status", icon: FileText, label: "Changes" },
   { id: "diff", icon: GitCommit, label: "Diff" },
   { id: "branches", icon: GitBranch, label: "Branches" },

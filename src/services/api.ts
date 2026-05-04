@@ -9,6 +9,9 @@ import type {
   DiffHunk,
   RebaseRequest,
   RebaseResult,
+  GrepMatch,
+  BlameLine,
+  PickaxeMode,
 } from "../types/git";
 import type { SystemStatus } from "../types/system";
 
@@ -267,4 +270,37 @@ export function rebaseAbort(repo: string) {
     method: "POST",
     body: JSON.stringify({ repo }),
   });
+}
+
+// ── Explorer ──
+
+export function getFileTree(repo: string, ref?: string) {
+  const params = new URLSearchParams({ repo });
+  if (ref) params.set("ref", ref);
+  return api<{ files: string[] }>(`/api/explorer/tree?${params}`);
+}
+
+export function getBlame(repo: string, file: string) {
+  const params = new URLSearchParams({ repo, file });
+  return api<{ lines: BlameLine[] }>(`/api/explorer/blame?${params}`);
+}
+
+export function getFileHistory(repo: string, file: string, limit = 50) {
+  const params = new URLSearchParams({ repo, file, limit: String(limit) });
+  return api<{ commits: CommitInfo[] }>(`/api/explorer/history?${params}`);
+}
+
+export function grepCode(repo: string, pattern: string, ignoreCase = true) {
+  const params = new URLSearchParams({ repo, pattern, ignoreCase: String(ignoreCase) });
+  return api<{ matches: GrepMatch[] }>(`/api/explorer/grep?${params}`);
+}
+
+export function pickaxeSearch(repo: string, query: string, mode: PickaxeMode = "S", limit = 50) {
+  const params = new URLSearchParams({ repo, query, mode, limit: String(limit) });
+  return api<{ commits: CommitInfo[] }>(`/api/explorer/pickaxe?${params}`);
+}
+
+export function compareRefs(repo: string, from: string, to: string) {
+  const params = new URLSearchParams({ repo, from, to });
+  return api<{ diffs: FileDiff[] }>(`/api/explorer/compare?${params}`);
 }
