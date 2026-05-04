@@ -586,7 +586,7 @@ router.post("/rebase-interactive", async (req, res, next) => {
     await mkdir(workDir, { recursive: true });
 
     try {
-      const todoLines = todos.map((entry: any) => {
+      const todoLines = todos.map((entry: { action: string; hash: string; message: string }) => {
         const action = entry.action === "drop" ? "drop" : entry.action;
         return `${action} ${entry.hash} ${entry.message}`;
       });
@@ -594,7 +594,7 @@ router.post("/rebase-interactive", async (req, res, next) => {
       const todoPath = join(workDir, "git-rebase-todo");
       await writeFile(todoPath, todoContent, "utf-8");
 
-      const rewordsToHandle = todos.filter((entry: any) => entry.action === "reword");
+      const rewordsToHandle = todos.filter((entry: { action: string; hash: string; message: string }) => entry.action === "reword");
       const env: Record<string, string> = {};
       env.GIT_SEQUENCE_EDITOR = `cp '${todoPath}'`;
 

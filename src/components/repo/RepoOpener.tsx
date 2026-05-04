@@ -55,8 +55,8 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
       } else {
         setError("Not a git repository");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -67,8 +67,8 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
     try {
       const result = await api.browsePath(target, showHidden);
       setBrowseState(result);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   }, [path, showHidden]);
 
@@ -80,8 +80,8 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
         setBrowseHistory((prev) => [...prev, browseState.path]);
       }
       setBrowseState(result);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   }, [browseState, showHidden]);
 
@@ -93,8 +93,8 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
     try {
       const result = await api.browsePath(prev, showHidden);
       setBrowseState(result);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     }
   }, [browseHistory, showHidden]);
 

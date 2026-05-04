@@ -122,10 +122,10 @@ export function StatsView({ onOpenSettings }: { onOpenSettings: () => void }) {
         if (!cancelled) {
           setActivity(stats);
         }
-      } catch (err: any) {
+      } catch (err) {
         if (!cancelled) {
           setActivity(null);
-          setError(err.message);
+          setError(err instanceof Error ? err.message : String(err));
         }
       } finally {
         if (!cancelled) {

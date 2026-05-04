@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Package, RotateCcw, Trash2, Download } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 import * as api from "../../services/api";
@@ -10,7 +10,7 @@ export function StashView() {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<Set<string>>(new Set());
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     if (!repoPath) return;
     setLoading(true);
     try {
@@ -21,13 +21,13 @@ export function StashView() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [repoPath]);
 
   useEffect(() => {
     void refresh();
-  }, [repoPath]);
+  }, [refresh]);
 
-  const wrap = async (name: string, fn: () => Promise<void>) => {
+  const wrap = async (name: string, fn: () => Promise<unknown>) => {
     setBusy((prev) => new Set(prev).add(name));
     try {
       await fn();
@@ -94,7 +94,7 @@ export function StashView() {
               </div>
               <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                 <button
-                  onClick={() => wrap(stash.name, () => api.applyStash(repoPath!, stash.name).then(() => {}))}
+                  onClick={() => wrap(stash.name, () => api.applyStash(repoPath!, stash.name))}
                   disabled={isBusy}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors disabled:opacity-40"
                   title="Apply stash"
@@ -103,7 +103,7 @@ export function StashView() {
                   Apply
                 </button>
                 <button
-                  onClick={() => wrap(stash.name, () => api.popStash(repoPath!, stash.name).then(() => {}))}
+                  onClick={() => wrap(stash.name, () => api.popStash(repoPath!, stash.name))}
                   disabled={isBusy}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border border-emerald-600/20 transition-colors disabled:opacity-40"
                   title="Pop stash"
@@ -114,7 +114,7 @@ export function StashView() {
                 <button
                   onClick={() => {
                     if (!confirm(`Drop stash ${stash.name}?`)) return;
-                    void wrap(stash.name, () => api.dropStash(repoPath!, stash.name).then(() => {}));
+                    void wrap(stash.name, () => api.dropStash(repoPath!, stash.name));
                   }}
                   disabled={isBusy}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-600/20 transition-colors disabled:opacity-40"
