@@ -110,7 +110,8 @@ export function RepoOpener({ onSelect }: RepoOpenerProps) {
     api.browsePath(browseState.path, showHidden)
       .then(setBrowseState)
       .catch(() => {});
-  }, [browseState?.path, browsing, showHidden]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [browseState?.path, browsing]);
 
   return (
     <div className="flex-1 bg-zinc-950">

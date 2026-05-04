@@ -24,8 +24,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }
   renamed: { label: "R", color: "text-blue-400", bg: "bg-blue-500/10" },
   untracked: { label: "U", color: "text-purple-400", bg: "bg-purple-500/10" },
   conflicted: { label: "C", color: "text-orange-400", bg: "bg-orange-500/10" },
-  staged: { label: "S", color: "text-emerald-400", bg: "bg-emerald-500/10" },
-  partially_staged: { label: "P", color: "text-yellow-400", bg: "bg-yellow-500/10" },
   copied: { label: "C", color: "text-blue-400", bg: "bg-blue-500/10" },
 };
 
@@ -197,9 +195,8 @@ function getDir(filePath: string): string {
 }
 
 function getDirGlob(filePath: string): string {
-  const parts = filePath.split("/");
-  parts[0] = parts[0] + "/";
-  return parts[0];
+  const idx = filePath.indexOf("/");
+  return idx === -1 ? filePath : filePath.slice(0, idx + 1);
 }
 
 export function StatusView({

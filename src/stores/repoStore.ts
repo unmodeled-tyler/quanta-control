@@ -56,7 +56,27 @@ interface RepoStore {
   clearError: () => void;
 }
 
-export const useRepoStore = create<RepoStore>((set, get) => ({
+export const useRepoStore = create<RepoStore>((set, get) => {
+  async function syncRepo(showLoading: boolean) {
+    const { repoPath } = get();
+    if (!repoPath) return;
+
+    if (showLoading) set({ loading: true, error: null });
+    try {
+      await Promise.all([
+        get().refreshStatus(),
+        get().refreshBranches(),
+        get().refreshLog(),
+      ]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      set({ error: message });
+    } finally {
+      if (showLoading) set({ loading: false });
+    }
+  }
+
+  return {
   repoPath: null,
   status: null,
   branches: [],
@@ -83,40 +103,9 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
     if (state.refresh) state.refresh();
   },
 
-  refresh: async () => {
-    const { repoPath } = get();
-    if (!repoPath) return;
+  refresh: () => syncRepo(true),
 
-    set({ loading: true, error: null });
-    try {
-      await Promise.all([
-        get().refreshStatus(),
-        get().refreshBranches(),
-        get().refreshLog(),
-      ]);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      set({ error: message });
-    } finally {
-      set({ loading: false });
-    }
-  },
-
-  pollRepo: async () => {
-    const { repoPath } = get();
-    if (!repoPath) return;
-
-    try {
-      await Promise.all([
-        get().refreshStatus(),
-        get().refreshBranches(),
-        get().refreshLog(),
-      ]);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      set({ error: message });
-    }
-  },
+  pollRepo: () => syncRepo(false),
 
   refreshStatus: async () => {
     const { repoPath } = get();
@@ -167,4 +156,5 @@ export const useRepoStore = create<RepoStore>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
-}));
+  };
+});

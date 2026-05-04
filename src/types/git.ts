@@ -5,9 +5,7 @@ export type FileStatus =
   | "renamed"
   | "copied"
   | "untracked"
-  | "conflicted"
-  | "staged"
-  | "partially_staged";
+  | "conflicted";
 
 export type StagedStatus = "unstaged" | "staged" | "partially_staged";
 

@@ -34,7 +34,7 @@ export async function git(
   const resolvedCwd = cwd ? expandPath(cwd) : undefined;
 
   if (input) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const child = spawn("git", args, {
         cwd: resolvedCwd,
         env: { ...process.env, ...env } as any,
@@ -50,9 +50,9 @@ export async function git(
 
       child.on("error", (err: any) => {
         if (err.code === "ENOENT") {
-          resolve({ stdout: "", stderr: "git is not installed or not in PATH", exitCode: 1 });
+          reject(new Error("git is not installed or not in PATH"));
         } else {
-          resolve({ stdout: "", stderr: err.message || String(err), exitCode: 1 });
+          reject(new Error(err.message || String(err)));
         }
       });
 

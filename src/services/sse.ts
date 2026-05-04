@@ -2,10 +2,22 @@ let currentSource: EventSource | null = null;
 let currentRepo: string | null = null;
 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
+function closeCurrent() {
+  if (currentSource) {
+    currentSource.close();
+    currentSource = null;
+  }
+  currentRepo = null;
+  if (refreshTimeout) {
+    clearTimeout(refreshTimeout);
+    refreshTimeout = null;
+  }
+}
+
 export async function connectRepoEvents(repo: string, refresh: () => void) {
   if (repo === currentRepo && currentSource) return;
 
-  disconnectRepoEvents();
+  closeCurrent();
   currentRepo = repo;
 
   // Fetch auth token for SSE (EventSource doesn't support custom headers,
@@ -30,25 +42,12 @@ export async function connectRepoEvents(repo: string, refresh: () => void) {
   };
 
   source.onerror = () => {
-    // Clean up dead connection so a fresh one can be established
-    if (currentSource === source) {
-      currentSource.close();
-      currentSource = null;
-      currentRepo = null;
-    }
+    closeCurrent();
   };
 
   source.onopen = () => {};
 }
 
 export function disconnectRepoEvents() {
-  if (currentSource) {
-    currentSource.close();
-    currentSource = null;
-  }
-  currentRepo = null;
-  if (refreshTimeout) {
-    clearTimeout(refreshTimeout);
-    refreshTimeout = null;
-  }
+  closeCurrent();
 }
