@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { gitInRepo } from "../services/gitExecutor.js";
 import { parseLog, parseDiff } from "../services/gitParser.js";
+import type { BlameLine } from "../../src/types/git.js";
+
+const LOG_FORMAT = `--format=%H|%h|%an|%ae|%ad|%s|%P|%D`;
 
 const router = Router();
 
@@ -50,16 +53,7 @@ router.get("/blame", async (req, res, next) => {
       return res.status(500).json({ error: result.stderr });
     }
 
-    const lines: Array<{
-      hash: string;
-      shortHash: string;
-      author: string;
-      authorEmail: string;
-      date: string;
-      line: number;
-      content: string;
-      summary: string;
-    }> = [];
+    const lines: BlameLine[] = [];
 
     let currentHash = "";
     let currentAuthor = "";
@@ -128,7 +122,7 @@ router.get("/history", async (req, res, next) => {
 
     const result = await gitInRepo(repoPath, [
       "log",
-      `--format=%H|%h|%an|%ae|%ad|%s|%P|%D`,
+      LOG_FORMAT,
       "--date=iso-strict",
       "--follow",
       `-n`, String(limit),
@@ -159,9 +153,9 @@ router.get("/grep", async (req, res, next) => {
 
     const caseInsensitive = req.query.ignoreCase !== "false";
 
-    const args = ["grep", "-n", "--heading", "--break"];
+    const args = ["grep", "-n", "-E"];
     if (caseInsensitive) args.push("-i");
-    args.push("-E", pattern);
+    args.push(pattern);
 
     const result = await gitInRepo(repoPath, args);
 
@@ -178,9 +172,6 @@ router.get("/grep", async (req, res, next) => {
 
     for (const raw of result.stdout.split("\n")) {
       if (!raw) continue;
-
-      // Skip heading lines (just the filename, no colon-digit pattern)
-      if (!/:\d+:/.test(raw)) continue;
 
       const colonIdx = raw.indexOf(":");
       const secondColonIdx = raw.indexOf(":", colonIdx + 1);
@@ -219,7 +210,7 @@ router.get("/pickaxe", async (req, res, next) => {
 
     const result = await gitInRepo(repoPath, [
       "log",
-      `--format=%H|%h|%an|%ae|%ad|%s|%P|%D`,
+      LOG_FORMAT,
       "--date=iso-strict",
       flag, query,
       `-n`, String(limit),

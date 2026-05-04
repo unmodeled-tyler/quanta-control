@@ -209,14 +209,6 @@ function BlameView({
     );
   }
 
-  // Build commit info map for the hover tooltips
-  const shortToSummary = new Map<string, string>();
-  for (const line of lines) {
-    if (!shortToSummary.has(line.shortHash)) {
-      shortToSummary.set(line.shortHash, line.summary);
-    }
-  }
-
   return (
     <div className="overflow-auto font-mono text-xs leading-5">
       {lines.map((line, i) => (
