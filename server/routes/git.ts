@@ -510,7 +510,7 @@ router.post("/gitignore", async (req, res, next) => {
 
     await appendFile(gitignorePath, addition, "utf-8");
 
-    const rmResult = await gitInRepo(repo, ["rm", "--cached", "--quiet", ...newPatterns.filter((p: string) => !p.endsWith("/"))]).catch(() => null);
+    await gitInRepo(repo, ["rm", "--cached", "--quiet", ...newPatterns.filter((p: string) => !p.endsWith("/"))]).catch(() => null);
 
     res.json({ success: true, added: newPatterns });
   } catch (err) {

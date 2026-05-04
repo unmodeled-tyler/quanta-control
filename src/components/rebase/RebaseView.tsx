@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { GitCommit, GripVertical, Loader2, AlertTriangle, Pencil, Trash2, ChevronDown, RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { GitCommit, GripVertical, Loader2, AlertTriangle, Pencil, Trash2, RotateCcw } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 import * as api from "../../services/api";
-import type { CommitInfo, RebaseAction, RebaseTodoEntry } from "../../types/git";
+import type { RebaseAction, RebaseTodoEntry } from "../../types/git";
 
 const ACTION_LABELS: Record<RebaseAction, string> = {
   pick: "Pick",
@@ -27,7 +27,6 @@ export function RebaseView() {
   const [initialized, setInitialized] = useState(false);
   const [rebasing, setRebasing] = useState(false);
   const [result, setResult] = useState<{ success: boolean; output: string; conflicts?: string[] } | null>(null);
-  const [rewordingHash, setRewordingHash] = useState<string | null>(null);
   const [rewordMessages, setRewordMessages] = useState<Record<string, string>>({});
   const [editingMessageHash, setEditingMessageHash] = useState<string | null>(null);
   const [editMessageText, setEditMessageText] = useState("");
@@ -58,7 +57,6 @@ export function RebaseView() {
   function resetTodos() {
     setResult(null);
     setRewordMessages({});
-    setRewordingHash(null);
     setEditingMessageHash(null);
     setInitialized(false);
   }
@@ -231,7 +229,6 @@ export function RebaseView() {
             key={entry.hash}
             entry={entry}
             index={index}
-            todos={todos}
             setTodos={setTodos}
             onActionChange={(action) => updateAction(index, action)}
             onReword={() => startReword(index)}
@@ -255,15 +252,9 @@ export function RebaseView() {
   );
 }
 
-interface DragState {
-  draggedIndex: number;
-  overIndex: number;
-}
-
 function RebaseTodoItem({
   entry,
   index,
-  todos,
   setTodos,
   onActionChange,
   onReword,
@@ -272,7 +263,6 @@ function RebaseTodoItem({
 }: {
   entry: RebaseTodoEntry;
   index: number;
-  todos: RebaseTodoEntry[];
   setTodos: React.Dispatch<React.SetStateAction<RebaseTodoEntry[]>>;
   onActionChange: (action: RebaseAction) => void;
   onReword: () => void;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { GitCommit, Upload, X, Check } from "lucide-react";
+import { GitCommit, Upload, Check } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import * as api from "../../services/api";

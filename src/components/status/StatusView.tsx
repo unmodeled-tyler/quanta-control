@@ -15,7 +15,7 @@ import { createPortal } from "react-dom";
 import { useRepoStore } from "../../stores/repoStore";
 import * as api from "../../services/api";
 import { ContextMenu, type ContextMenuEntry } from "../common/ContextMenu";
-import type { GitFile, StagedStatus } from "../../types/git";
+import type { GitFile } from "../../types/git";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   added: { label: "A", color: "text-emerald-400", bg: "bg-emerald-500/10" },

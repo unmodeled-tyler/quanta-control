@@ -1,6 +1,5 @@
 import { Router } from "express";
-import { join } from "path";
-import { gitInRepo, expandPath, git } from "../services/gitExecutor.js";
+import { gitInRepo, git } from "../services/gitExecutor.js";
 
 const router = Router();
 

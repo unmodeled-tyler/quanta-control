@@ -4,12 +4,10 @@ import {
   Plus,
   Trash2,
   RefreshCw,
-  Check,
   ArrowRight,
 } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 import * as api from "../../services/api";
-import type { Branch } from "../../types/git";
 
 export function BranchView() {
   const { repoPath, branches, refreshBranches, refreshStatus } = useRepoStore();

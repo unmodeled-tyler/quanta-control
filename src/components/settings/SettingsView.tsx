@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import {
   User,
-  GitBranch,
   RefreshCw,
   Eye,
   SplitSquareHorizontal,
   AlignLeft,
   Shield,
-  Trash2,
   RotateCcw,
   FolderOpen,
 } from "lucide-react";

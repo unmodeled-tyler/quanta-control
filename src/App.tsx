@@ -139,20 +139,10 @@ export default function App() {
   useEffect(() => {
     try {
       localStorage.setItem(STATUS_PANEL_WIDTH_KEY, String(statusPanelWidth));
-    } catch {}
-  }, [statusPanelWidth]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem(BRANCH_PANEL_WIDTH_KEY, String(branchPanelWidth));
-    } catch {}
-  }, [branchPanelWidth]);
-
-  useEffect(() => {
-    try {
       localStorage.setItem(COMMIT_PANEL_HEIGHT_KEY, String(commitPanelHeight));
     } catch {}
-  }, [commitPanelHeight]);
+  }, [statusPanelWidth, branchPanelWidth, commitPanelHeight]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.electronAPI) return;
