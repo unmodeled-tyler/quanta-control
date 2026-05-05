@@ -27,7 +27,9 @@ import { CommitList } from "./CommitList";
 import { CompareView } from "./CompareView";
 import { FileTree } from "./FileTree";
 import { buildFileTree } from "./fileTree";
-import { groupTodosByTag, TODO_TAG_CLASSES } from "./todos";
+import { PickaxeResultsPanel } from "./PickaxeResultsPanel";
+import { SearchResultsPanel } from "./SearchResultsPanel";
+import { TodosPanel } from "./TodosPanel";
 
 // ── Main ExplorerView ──
 
@@ -418,8 +420,6 @@ export function ExplorerView() {
     });
   }, []);
 
-  const handleResultClick = (match: GrepMatch) => openFileInExplorer(match.file);
-
   if (!repoPath) {
     return (
       <div className="flex items-center justify-center h-full text-zinc-500">
@@ -573,54 +573,21 @@ export function ExplorerView() {
           )}
 
           {mode === "search" && (
-            searchLoading ? (
-              <div className="flex items-center justify-center h-full text-zinc-500">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
-            ) : searchError && searchResults.length === 0 ? (
-              <div className="p-4 text-center text-sm text-zinc-500">{searchError}</div>
-            ) : (
-              <div className="text-xs">
-                {searchResults.length > 0 && (
-                  <div className="px-3 py-1.5 text-zinc-500 border-b border-zinc-800/40">
-                    {searchResults.length} match{searchResults.length !== 1 ? "es" : ""}
-                    {searchTruncated && <span className="block text-[10px] text-amber-400">Showing first {searchResults.length} results</span>}
-                  </div>
-                )}
-                {searchResults.map((match, i) => (
-                  <button
-                    key={`${match.file}:${match.line}:${i}`}
-                    onClick={() => handleResultClick(match)}
-                    className="w-full text-left px-3 py-1.5 hover:bg-zinc-800/40 transition-colors border-b border-zinc-800/20"
-                  >
-                    <div className="text-zinc-400 font-mono truncate">{match.file}</div>
-                    <div className="flex gap-2 mt-0.5">
-                      <span className="text-zinc-600 font-mono flex-shrink-0">{match.line}</span>
-                      <span className="text-zinc-300 truncate">{match.content.trim()}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )
+            <SearchResultsPanel
+              loading={searchLoading}
+              error={searchError}
+              results={searchResults}
+              truncated={searchTruncated}
+              onOpenFile={openFileInExplorer}
+            />
           )}
 
           {mode === "pickaxe" && (
-            pickaxeLoading ? (
-              <div className="flex items-center justify-center h-full text-zinc-500">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
-            ) : pickaxeError && pickaxeResults.length === 0 ? (
-              <div className="p-4 text-center text-sm text-zinc-500">{pickaxeError}</div>
-            ) : (
-              <div className="text-xs">
-                {pickaxeResults.length > 0 && (
-                  <div className="px-3 py-1.5 text-zinc-500 border-b border-zinc-800/40">
-                    {pickaxeResults.length} commit{pickaxeResults.length !== 1 ? "s" : ""}
-                  </div>
-                )}
-                <CommitList commits={pickaxeResults} loading={false} emptyMessage="" />
-              </div>
-            )
+            <PickaxeResultsPanel
+              loading={pickaxeLoading}
+              error={pickaxeError}
+              commits={pickaxeResults}
+            />
           )}
 
           {mode === "compare" && (
@@ -630,42 +597,13 @@ export function ExplorerView() {
           )}
 
           {mode === "todos" && (
-            todoLoading ? (
-              <div className="flex items-center justify-center h-full text-zinc-500">
-                <Loader2 className="h-5 w-5 animate-spin" />
-              </div>
-            ) : todoError && todoItems.length === 0 ? (
-              <div className="p-4 text-center text-sm text-zinc-500">{todoError}</div>
-            ) : (
-              <div className="text-xs">
-                {todoItems.length > 0 && (
-                  <div className="px-3 py-1.5 text-zinc-500 border-b border-zinc-800/40">
-                    {todoItems.length} item{todoItems.length !== 1 ? "s" : ""}
-                    {todoTruncated && <span className="block text-[10px] text-amber-400">Showing first {todoItems.length} items</span>}
-                  </div>
-                )}
-                {groupTodosByTag(todoItems).map(({ tag, items: groupItems }) => (
-                  <div key={tag}>
-                    <div className={`px-3 py-1 text-[10px] font-medium uppercase tracking-wide ${TODO_TAG_CLASSES[tag] ?? "text-zinc-500"}`}>
-                      {tag} ({groupItems.length})
-                    </div>
-                    {groupItems.map((item, i) => (
-                      <button
-                        key={`${item.file}:${item.line}:${i}`}
-                        onClick={() => openFileInExplorer(item.file)}
-                        className="w-full text-left px-3 py-1.5 hover:bg-zinc-800/40 transition-colors border-b border-zinc-800/20"
-                      >
-                        <div className="text-zinc-400 font-mono truncate">{item.file}</div>
-                        <div className="flex gap-2 mt-0.5">
-                          <span className="text-zinc-600 font-mono flex-shrink-0">{item.line}</span>
-                          <span className="text-zinc-300 truncate">{item.content.trim()}</span>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            )
+            <TodosPanel
+              loading={todoLoading}
+              error={todoError}
+              items={todoItems}
+              truncated={todoTruncated}
+              onOpenFile={openFileInExplorer}
+            />
           )}
 
           {mode === "tags" && (
