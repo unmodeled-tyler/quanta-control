@@ -497,6 +497,9 @@ export function ExplorerView() {
   // ── Load blame + history when file selected ──
 
   useEffect(() => {
+    setSelectedLines(new Set());
+    setLineHistoryRange(null);
+
     if (!repoPath || !selectedFile) {
       setBlameLines([]);
       setFileHistory([]);
@@ -657,15 +660,15 @@ export function ExplorerView() {
     e.preventDefault();
     if (!repoPath || !newTagName.trim()) return;
     setTagCreating(true);
+    setTagError(null);
     try {
       await api.createTag(repoPath, newTagName.trim(), newTagMessage.trim() || undefined);
       setNewTagName("");
       setNewTagMessage("");
-      // Refresh tag list
       const result = await api.getTags(repoPath);
       setTags(result.tags);
     } catch (err) {
-      // ignore — the form stays open
+      setTagError(err instanceof Error ? err.message : "Failed to create tag");
     } finally {
       setTagCreating(false);
     }
@@ -673,11 +676,12 @@ export function ExplorerView() {
 
   const deleteTagAction = async (name: string) => {
     if (!repoPath) return;
+    setTagError(null);
     try {
       await api.deleteTag(repoPath, name);
       setTags((prev) => prev.filter((t) => t.name !== name));
-    } catch {
-      // ignore
+    } catch (err) {
+      setTagError(err instanceof Error ? err.message : "Failed to delete tag");
     }
   };
 

@@ -262,12 +262,19 @@ router.get("/line-history", async (req, res, next) => {
     const start = Number(req.query.start);
     const end = Number(req.query.end);
 
-    if (!repoPath || !file || !Number.isFinite(start) || !Number.isFinite(end)) {
-      return res.status(400).json({ error: "repo, file, start, and end required" });
+    if (
+      !repoPath ||
+      !file ||
+      !Number.isInteger(start) ||
+      !Number.isInteger(end) ||
+      start < 1 ||
+      end < start
+    ) {
+      return res.status(400).json({ error: "repo, file, and a valid line range required" });
     }
 
     const range = `${start},${end}:${file}`;
-    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
 
     const result = await gitInRepo(repoPath, [
       "log",
@@ -325,14 +332,7 @@ router.get("/todos", async (req, res, next) => {
 
         if (!Number.isFinite(lineNum)) continue;
 
-        const upper = content.toUpperCase();
-        let tag = "TODO";
-        if (upper.includes("FIXME")) tag = "FIXME";
-        else if (upper.includes("HACK")) tag = "HACK";
-        else if (upper.includes("XXX")) tag = "XXX";
-        else if (upper.includes("OPTIMIZE")) tag = "OPTIMIZE";
-        else if (upper.includes("BUG")) tag = "BUG";
-        else if (upper.includes("REVIEW")) tag = "REVIEW";
+        const tag = content.match(/\b(FIXME|BUG|TODO|HACK|OPTIMIZE|REVIEW|XXX)\b/i)?.[1]?.toUpperCase() ?? "TODO";
 
         items.push({ file, line: lineNum, content, tag });
       }
