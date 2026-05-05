@@ -5,404 +5,29 @@ import type {
   BlameLine,
   CommitInfo,
   GrepMatch,
-  FileTreeNode,
-  FileNodeType,
   PickaxeMode,
   FileDiff,
   TodoItem,
   Tag,
 } from "../../types/git";
-import { getRelativeTime } from "../../utils/time";
 import {
   Search,
   FolderOpen,
-  Folder,
   File,
-  ChevronRight,
-  ChevronDown,
   GitCommit,
   Hash,
-  User,
   Clock,
   ArrowRightLeft,
   Loader2,
   TagIcon,
   AlertCircle,
 } from "lucide-react";
-
-// ── Helpers ──
-
-function buildFileTree(files: string[]): FileTreeNode[] {
-  const root: FileTreeNode[] = [];
-  const dirMap = new Map<string, FileTreeNode>();
-
-  for (const file of files) {
-    const parts = file.split("/");
-    let current = root;
-    let currentPath = "";
-
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i]!;
-      currentPath = currentPath ? `${currentPath}/${part}` : part;
-      const isLast = i === parts.length - 1;
-      const type: FileNodeType = isLast ? "file" : "directory";
-
-      let node = dirMap.get(currentPath);
-      if (!node) {
-        node = {
-          name: part,
-          path: currentPath,
-          type,
-          children: type === "directory" ? [] : undefined,
-        };
-        dirMap.set(currentPath, node);
-        current.push(node);
-      }
-
-      if (type === "directory" && node.children) {
-        current = node.children;
-      }
-    }
-  }
-
-  return root;
-}
-
-const TODO_TAG_CLASSES: Record<string, string> = {
-  FIXME: "text-red-400",
-  BUG: "text-red-400",
-  HACK: "text-amber-400",
-  TODO: "text-blue-400",
-  OPTIMIZE: "text-purple-400",
-  REVIEW: "text-cyan-400",
-  XXX: "text-zinc-400",
-};
-
-function groupTodosByTag(items: TodoItem[]) {
-  const order = ["FIXME", "BUG", "TODO", "HACK", "OPTIMIZE", "REVIEW", "XXX"];
-  const map = new Map<string, TodoItem[]>();
-
-  for (const item of items) {
-    const list = map.get(item.tag);
-    if (list) {
-      list.push(item);
-    } else {
-      map.set(item.tag, [item]);
-    }
-  }
-
-  return order
-    .filter((tag) => map.has(tag))
-    .map((tag) => ({ tag, items: map.get(tag)! }));
-}
-
-// ── File Tree ──
-
-function FileTree({
-  nodes,
-  selectedFile,
-  onSelectFile,
-  expandedDirs,
-  onToggleDir,
-}: {
-  nodes: FileTreeNode[];
-  selectedFile: string | null;
-  onSelectFile: (path: string) => void;
-  expandedDirs: Set<string>;
-  onToggleDir: (path: string) => void;
-}) {
-  return (
-    <div className="text-xs">
-      {nodes.map((node) => (
-        <TreeNode
-          key={node.path}
-          node={node}
-          selectedFile={selectedFile}
-          onSelectFile={onSelectFile}
-          expandedDirs={expandedDirs}
-          onToggleDir={onToggleDir}
-          depth={0}
-        />
-      ))}
-      {nodes.length === 0 && (
-        <div className="p-4 text-center text-zinc-500">No files to show</div>
-      )}
-    </div>
-  );
-}
-
-function TreeNode({
-  node,
-  selectedFile,
-  onSelectFile,
-  expandedDirs,
-  onToggleDir,
-  depth,
-}: {
-  node: FileTreeNode;
-  selectedFile: string | null;
-  onSelectFile: (path: string) => void;
-  expandedDirs: Set<string>;
-  onToggleDir: (path: string) => void;
-  depth: number;
-}) {
-  const isExpanded = expandedDirs.has(node.path);
-  const isSelected = selectedFile === node.path;
-
-  if (node.type === "directory") {
-    return (
-      <div>
-        <button
-          onClick={() => onToggleDir(node.path)}
-          className={`flex w-full items-center gap-1 px-2 py-0.5 text-left hover:bg-zinc-800/40 transition-colors ${
-            isSelected ? "bg-emerald-500/10 text-emerald-400" : "text-zinc-400"
-          }`}
-          style={{ paddingLeft: `${8 + depth * 16}px` }}
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3 flex-shrink-0" />
-          ) : (
-            <ChevronRight className="h-3 w-3 flex-shrink-0" />
-          )}
-          {isExpanded ? (
-            <FolderOpen className="h-3.5 w-3.5 flex-shrink-0 text-amber-500/60" />
-          ) : (
-            <Folder className="h-3.5 w-3.5 flex-shrink-0 text-amber-500/60" />
-          )}
-          <span className="truncate">{node.name}</span>
-        </button>
-        {isExpanded && node.children && (
-          <div>
-            {node.children.map((child) => (
-              <TreeNode
-                key={child.path}
-                node={child}
-                selectedFile={selectedFile}
-                onSelectFile={onSelectFile}
-                expandedDirs={expandedDirs}
-                onToggleDir={onToggleDir}
-                depth={depth + 1}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <button
-      onClick={() => onSelectFile(node.path)}
-      className={`flex w-full items-center gap-1.5 px-2 py-0.5 text-left hover:bg-zinc-800/40 transition-colors ${
-        isSelected
-          ? "bg-emerald-500/10 text-emerald-400"
-          : "text-zinc-300"
-      }`}
-      style={{ paddingLeft: `${8 + depth * 16}px` }}
-    >
-      <File className="h-3.5 w-3.5 flex-shrink-0 text-zinc-500" />
-      <span className="truncate">{node.name}</span>
-    </button>
-  );
-}
-
-// ── Blame View ──
-
-function BlameView({
-  lines,
-  loading,
-  error,
-  selectedLines,
-  onToggleLine,
-}: {
-  lines: BlameLine[];
-  loading: boolean;
-  error: string | null;
-  selectedLines: Set<number>;
-  onToggleLine: (line: number) => void;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full text-zinc-500">
-        <Loader2 className="h-5 w-5 animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-400 text-sm">
-        {error}
-      </div>
-    );
-  }
-
-  if (lines.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
-        No blame data
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-auto font-mono text-xs leading-5">
-      {lines.map((line, i) => {
-        const isRangeSelected = selectedLines.has(line.line);
-        return (
-        <div
-          key={i}
-          onClick={() => onToggleLine(line.line)}
-          className={`flex hover:bg-zinc-800/30 transition-colors group cursor-pointer ${isRangeSelected ? "bg-emerald-500/10" : ""}`}
-        >
-          <div className="flex-shrink-0 w-[180px] flex items-center gap-2 px-2 border-r border-zinc-800/50 text-zinc-500 bg-zinc-950/40 group-hover:bg-zinc-900/40">
-            <span className="text-zinc-400 font-mono w-[56px] flex-shrink-0 truncate" title={line.hash}>
-              {line.shortHash}
-            </span>
-            <span className="truncate flex-1 text-[10px]" title={line.summary}>
-              {line.author}
-            </span>
-            <span className="flex-shrink-0 text-[10px] text-zinc-600">
-              {getRelativeTime(line.date)}
-            </span>
-          </div>
-          <div className="flex-1 px-3 text-zinc-300 whitespace-pre">
-            {line.content}
-          </div>
-        </div>
-      );
-    })}
-  </div>
-  );
-}
-
-// ── Commit List (reused for history + pickaxe) ──
-
-function CommitList({
-  commits,
-  loading,
-  emptyMessage,
-}: {
-  commits: CommitInfo[];
-  loading: boolean;
-  emptyMessage: string;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full text-zinc-500">
-        <Loader2 className="h-5 w-5 animate-spin" />
-      </div>
-    );
-  }
-
-  if (commits.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
-        {emptyMessage}
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-auto">
-      {commits.map((commit) => (
-        <div
-          key={commit.hash}
-          className="flex items-start gap-3 px-3 py-2 border-b border-zinc-800/40 hover:bg-zinc-800/20 transition-colors"
-        >
-          <GitCommit className="h-4 w-4 flex-shrink-0 mt-0.5 text-zinc-500" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 text-xs">
-              <span className="font-mono text-zinc-400">{commit.shortHash}</span>
-              <span className="text-zinc-300 truncate font-medium">{commit.message}</span>
-            </div>
-            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-zinc-500">
-              <User className="h-2.5 w-2.5" />
-              <span>{commit.author}</span>
-              <Clock className="h-2.5 w-2.5 ml-1" />
-              <span>{getRelativeTime(commit.date)}</span>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Compare View ──
-
-function CompareView({
-  diffs,
-  loading,
-  error,
-}: {
-  diffs: FileDiff[];
-  loading: boolean;
-  error: string | null;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full text-zinc-500">
-        <Loader2 className="h-5 w-5 animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-full text-red-400 text-sm">
-        {error}
-      </div>
-    );
-  }
-
-  if (diffs.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-full text-zinc-500 text-sm">
-        No differences between these refs
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-auto">
-      {diffs.map((diff) => (
-        <div key={diff.path} className="border-b border-zinc-800/40">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-zinc-900/60 text-xs font-medium text-zinc-300">
-            <File className="h-3 w-3 text-zinc-400" />
-            <span>{diff.path}</span>
-            <span className="text-zinc-500">
-              +{diff.additions} −{diff.deletions}
-            </span>
-          </div>
-          <div className="font-mono text-xs">
-            {diff.hunks.map((hunk, hi) => (
-              <div key={hi}>
-                <div className="px-3 py-0.5 text-zinc-500 bg-zinc-900/30 text-[10px]">
-                  {hunk.header}
-                </div>
-                {hunk.lines.map((line, li) => (
-                  <div
-                    key={li}
-                    className={`px-3 py-0 whitespace-pre ${
-                      line.type === "add"
-                        ? "bg-emerald-500/10 text-emerald-300"
-                        : line.type === "delete"
-                          ? "bg-red-500/10 text-red-300"
-                          : "text-zinc-400"
-                    }`}
-                  >
-                    {line.content}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+import { BlameView } from "./BlameView";
+import { CommitList } from "./CommitList";
+import { CompareView } from "./CompareView";
+import { FileTree } from "./FileTree";
+import { buildFileTree } from "./fileTree";
+import { groupTodosByTag, TODO_TAG_CLASSES } from "./todos";
 
 // ── Main ExplorerView ──
 
@@ -457,6 +82,7 @@ export function ExplorerView() {
   const [tagError, setTagError] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState("");
   const [newTagMessage, setNewTagMessage] = useState("");
+  const [newTagRef, setNewTagRef] = useState("");
   const [tagCreating, setTagCreating] = useState(false);
 
   // Line history (for blame view)
@@ -662,9 +288,15 @@ export function ExplorerView() {
     setTagCreating(true);
     setTagError(null);
     try {
-      await api.createTag(repoPath, newTagName.trim(), newTagMessage.trim() || undefined);
+      await api.createTag(
+        repoPath,
+        newTagName.trim(),
+        newTagMessage.trim() || undefined,
+        newTagRef.trim() || undefined,
+      );
       setNewTagName("");
       setNewTagMessage("");
+      setNewTagRef("");
       const result = await api.getTags(repoPath);
       setTags(result.tags);
       void refresh();
@@ -1055,6 +687,13 @@ export function ExplorerView() {
                     placeholder="Message (optional)…"
                     className="w-full bg-zinc-900 border border-zinc-700 rounded-md py-1.5 px-2.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/50"
                   />
+                  <input
+                    type="text"
+                    value={newTagRef}
+                    onChange={(e) => setNewTagRef(e.target.value)}
+                    placeholder="Ref (optional, defaults to HEAD)…"
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-md py-1.5 px-2.5 text-xs text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:border-emerald-500/50"
+                  />
                   <button
                     type="submit"
                     disabled={tagCreating || !newTagName.trim()}
@@ -1133,7 +772,10 @@ export function ExplorerView() {
                           className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] text-emerald-400 hover:bg-emerald-500/10 transition-colors"
                         >
                           <Clock className="h-2.5 w-2.5" />
-                          Trace history ({selectedLines.size} line{selectedLines.size !== 1 ? "s" : ""})
+                          {(() => {
+                            const sorted = [...selectedLines].sort((a, b) => a - b);
+                            return `Trace L${sorted[0]}–L${sorted[sorted.length - 1]} (${selectedLines.size} selected)`;
+                          })()}
                         </button>
                       )}
                     </div>
