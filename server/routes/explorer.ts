@@ -253,4 +253,95 @@ router.get("/compare", async (req, res, next) => {
   }
 });
 
+// ── Line history ──
+
+router.get("/line-history", async (req, res, next) => {
+  try {
+    const repoPath = req.query.repo as string;
+    const file = req.query.file as string;
+    const start = Number(req.query.start);
+    const end = Number(req.query.end);
+
+    if (!repoPath || !file || !Number.isFinite(start) || !Number.isFinite(end)) {
+      return res.status(400).json({ error: "repo, file, start, and end required" });
+    }
+
+    const range = `${start},${end}:${file}`;
+    const limit = Math.min(Number(req.query.limit) || 50, 200);
+
+    const result = await gitInRepo(repoPath, [
+      "log",
+      LOG_FORMAT,
+      "--date=iso-strict",
+      `-L`, range,
+      `-n`, String(limit),
+    ]);
+
+    if (result.exitCode !== 0) {
+      return res.status(500).json({ error: result.stderr });
+    }
+
+    const commits = parseLog(result.stdout || "");
+    res.json({ commits });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── TODO / FIXME scanner ──
+
+router.get("/todos", async (req, res, next) => {
+  try {
+    const repoPath = req.query.repo as string;
+    if (!repoPath) return res.status(400).json({ error: "repo path required" });
+
+    const pattern = "(TODO|FIXME|HACK|XXX|OPTIMIZE|BUG|REVIEW)";
+
+    const result = await gitInRepo(repoPath, [
+      "grep", "-n", "-i", "-E", pattern,
+    ]);
+
+    if (result.exitCode === 1) {
+      return res.json({ items: [] });
+    }
+
+    if (result.exitCode !== 0) {
+      return res.status(500).json({ error: result.stderr });
+    }
+
+    const items: Array<{ file: string; line: number; content: string; tag: string }> = [];
+
+    for (const raw of result.stdout.split("\n")) {
+      if (!raw) continue;
+
+      const colonIdx = raw.indexOf(":");
+      const secondColonIdx = raw.indexOf(":", colonIdx + 1);
+
+      if (colonIdx > 0 && secondColonIdx > colonIdx) {
+        const file = raw.slice(0, colonIdx);
+        const lineStr = raw.slice(colonIdx + 1, secondColonIdx);
+        const lineNum = Number(lineStr);
+        const content = raw.slice(secondColonIdx + 1);
+
+        if (!Number.isFinite(lineNum)) continue;
+
+        const upper = content.toUpperCase();
+        let tag = "TODO";
+        if (upper.includes("FIXME")) tag = "FIXME";
+        else if (upper.includes("HACK")) tag = "HACK";
+        else if (upper.includes("XXX")) tag = "XXX";
+        else if (upper.includes("OPTIMIZE")) tag = "OPTIMIZE";
+        else if (upper.includes("BUG")) tag = "BUG";
+        else if (upper.includes("REVIEW")) tag = "REVIEW";
+
+        items.push({ file, line: lineNum, content, tag });
+      }
+    }
+
+    res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

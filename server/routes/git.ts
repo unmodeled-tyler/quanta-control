@@ -658,4 +658,97 @@ router.post("/rebase-abort", async (req, res, next) => {
   }
 });
 
+// ── Tags ──
+
+router.get("/tags", async (req, res, next) => {
+  try {
+    const repoPath = req.query.repo as string;
+    if (!repoPath) return res.status(400).json({ error: "repo path required" });
+
+    const result = await gitInRepo(repoPath, [
+      "tag", "--list", "--format=%(refname:short)|%(objectname:short)|%(objectname)|%(subject)|%(taggername)",
+      "--sort=-creatordate",
+    ]);
+
+    if (result.exitCode !== 0) {
+      return res.status(500).json({ error: result.stderr });
+    }
+
+    const tags = result.stdout
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [name, shortHash, hash, message, tagger] = line.split("|");
+        return {
+          name: name ?? "",
+          shortHash: shortHash ?? "",
+          hash: hash ?? "",
+          message: message ?? "",
+          isAnnotated: Boolean(tagger),
+        };
+      });
+
+    res.json({ tags });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/tag-create", async (req, res, next) => {
+  try {
+    const { repo, name, message, ref } = req.body;
+    if (!repo || !name) return res.status(400).json({ error: "repo and name required" });
+
+    const args = ["tag"];
+    if (message) args.push("-a", "-m", message);
+    args.push(name);
+    if (ref) args.push(ref);
+
+    const result = await gitInRepo(repo, args);
+    if (result.exitCode !== 0) {
+      return res.status(500).json({ error: result.stderr });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/tag-delete", async (req, res, next) => {
+  try {
+    const { repo, name } = req.body;
+    if (!repo || !name) return res.status(400).json({ error: "repo and name required" });
+
+    const result = await gitInRepo(repo, ["tag", "-d", name]);
+    if (result.exitCode !== 0) {
+      return res.status(500).json({ error: result.stderr });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Cherry-pick ──
+
+router.post("/cherry-pick", async (req, res, next) => {
+  try {
+    const { repo, commit } = req.body;
+    if (!repo || !commit) return res.status(400).json({ error: "repo and commit required" });
+
+    const result = await gitInRepo(repo, ["cherry-pick", commit]);
+    if (result.exitCode !== 0) {
+      // Auto-abort on conflict so we don't leave the repo in a bad state
+      await gitInRepo(repo, ["cherry-pick", "--abort"]).catch(() => {});
+      return res.status(500).json({ error: result.stderr || "Cherry-pick failed" });
+    }
+
+    res.json({ success: true, output: result.stdout || result.stderr });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

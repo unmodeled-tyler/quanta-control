@@ -12,6 +12,8 @@ import type {
   GrepMatch,
   BlameLine,
   PickaxeMode,
+  TodoItem,
+  Tag,
 } from "../types/git";
 import type { SystemStatus } from "../types/system";
 
@@ -303,4 +305,44 @@ export function pickaxeSearch(repo: string, query: string, mode: PickaxeMode = "
 export function compareRefs(repo: string, from: string, to: string) {
   const params = new URLSearchParams({ repo, from, to });
   return api<{ diffs: FileDiff[] }>(`/api/explorer/compare?${params}`);
+}
+
+export function getLineHistory(repo: string, file: string, start: number, end: number, limit = 50) {
+  const params = new URLSearchParams({
+    repo,
+    file,
+    start: String(start),
+    end: String(end),
+    limit: String(limit),
+  });
+  return api<{ commits: CommitInfo[] }>(`/api/explorer/line-history?${params}`);
+}
+
+export function scanTodos(repo: string) {
+  return api<{ items: TodoItem[] }>(`/api/explorer/todos?repo=${encodeURIComponent(repo)}`);
+}
+
+export function getTags(repo: string) {
+  return api<{ tags: Tag[] }>(`${GIT_BASE}/tags?repo=${encodeURIComponent(repo)}`);
+}
+
+export function createTag(repo: string, name: string, message?: string, ref?: string) {
+  return api<{ success: boolean }>(`${GIT_BASE}/tag-create`, {
+    method: "POST",
+    body: JSON.stringify({ repo, name, message, ref }),
+  });
+}
+
+export function deleteTag(repo: string, name: string) {
+  return api<{ success: boolean }>(`${GIT_BASE}/tag-delete`, {
+    method: "POST",
+    body: JSON.stringify({ repo, name }),
+  });
+}
+
+export function cherryPick(repo: string, commit: string) {
+  return api<{ success: boolean; output: string }>(`${GIT_BASE}/cherry-pick`, {
+    method: "POST",
+    body: JSON.stringify({ repo, commit }),
+  });
 }

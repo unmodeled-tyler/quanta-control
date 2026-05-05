@@ -1,4 +1,4 @@
-import { GitCommit, Files, Loader2, List, Network } from "lucide-react";
+import { GitCommit, Files, Loader2, List, Network, CopyCheck, AlertCircle } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 import { useEffect, useMemo, useState, useRef } from "react";
 import * as api from "../../services/api";
@@ -36,6 +36,9 @@ export function LogView() {
   const [diffCache, setDiffCache] = useState<Record<string, FileDiff[]>>({});
   const [loadingCommit, setLoadingCommit] = useState<string | null>(null);
   const [error, setError] = useState<{ hash: string; message: string } | null>(null);
+  const [cherryPickSuccess, setCherryPickSuccess] = useState<string | null>(null);
+  const [cherryPickError, setCherryPickError] = useState<string | null>(null);
+  const [cherryPicking, setCherryPicking] = useState(false);
   const [historyPanelWidth, setHistoryPanelWidth] = useState(() =>
     loadStoredNumber(HISTORY_PANEL_WIDTH_KEY, 360),
   );
@@ -255,7 +258,45 @@ export function LogView() {
                   <span className="text-emerald-400">+{totals.additions}</span>
                   <span className="text-red-400">-{totals.deletions}</span>
                 </div>
+                <button
+                  onClick={async () => {
+                    if (!repoPath || !activeCommit || cherryPicking) return;
+                    setCherryPicking(true);
+                    setCherryPickSuccess(null);
+                    setCherryPickError(null);
+                    try {
+                      await api.cherryPick(repoPath, activeCommit.hash);
+                      setCherryPickSuccess(`Cherry-picked ${activeCommit.shortHash}`);
+                    } catch (err) {
+                      setCherryPickError(err instanceof Error ? err.message : "Cherry-pick failed");
+                    } finally {
+                      setCherryPicking(false);
+                    }
+                  }}
+                  disabled={cherryPicking}
+                  className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 disabled:opacity-40 transition-colors"
+                  title="Cherry-pick this commit onto the current branch"
+                >
+                  {cherryPicking ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <CopyCheck className="h-3 w-3" />
+                  )}
+                  Cherry-pick
+                </button>
               </div>
+              {cherryPickSuccess && (
+                <div className="mt-2 flex items-center gap-1.5 rounded-md bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
+                  <CopyCheck className="h-3 w-3" />
+                  {cherryPickSuccess}
+                </div>
+              )}
+              {cherryPickError && (
+                <div className="mt-2 flex items-center gap-1.5 rounded-md bg-red-500/10 px-3 py-1.5 text-xs text-red-400">
+                  <AlertCircle className="h-3 w-3" />
+                  {cherryPickError}
+                </div>
+              )}
             </div>
 
             {error?.hash === activeCommit.hash && loadingCommit !== activeCommit.hash ? (

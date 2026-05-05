@@ -178,3 +178,18 @@ export interface FileTreeNode {
 }
 
 export type PickaxeMode = "S" | "G";
+
+export interface TodoItem {
+  file: string;
+  line: number;
+  content: string;
+  tag: string;
+}
+
+export interface Tag {
+  name: string;
+  hash: string;
+  shortHash: string;
+  message: string;
+  isAnnotated: boolean;
+}
