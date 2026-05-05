@@ -409,7 +409,7 @@ function CompareView({
 type ExplorerMode = "browse" | "search" | "pickaxe" | "compare" | "todos" | "tags";
 
 export function ExplorerView() {
-  const { repoPath } = useRepoStore();
+  const { repoPath, refresh } = useRepoStore();
 
   // Mode
   const [mode, setMode] = useState<ExplorerMode>("browse");
@@ -667,6 +667,7 @@ export function ExplorerView() {
       setNewTagMessage("");
       const result = await api.getTags(repoPath);
       setTags(result.tags);
+      void refresh();
     } catch (err) {
       setTagError(err instanceof Error ? err.message : "Failed to create tag");
     } finally {
@@ -676,10 +677,12 @@ export function ExplorerView() {
 
   const deleteTagAction = async (name: string) => {
     if (!repoPath) return;
+    if (!window.confirm(`Delete tag "${name}"?`)) return;
     setTagError(null);
     try {
       await api.deleteTag(repoPath, name);
       setTags((prev) => prev.filter((t) => t.name !== name));
+      void refresh();
     } catch (err) {
       setTagError(err instanceof Error ? err.message : "Failed to delete tag");
     }

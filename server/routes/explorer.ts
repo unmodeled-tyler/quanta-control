@@ -2,6 +2,7 @@ import { Router } from "express";
 import { gitInRepo } from "../services/gitExecutor.js";
 import { parseLog, parseDiff } from "../services/gitParser.js";
 import type { BlameLine } from "../../src/types/git.js";
+import { parseBoundedLimit, parseGitLineMatches } from "../utils/gitRouteHelpers.js";
 
 const LOG_FORMAT = `--format=%H|%h|%an|%ae|%ad|%s|%P|%D`;
 
@@ -118,7 +119,7 @@ router.get("/history", async (req, res, next) => {
       return res.status(400).json({ error: "repo and file required" });
     }
 
-    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const limit = parseBoundedLimit(req.query.limit);
 
     const result = await gitInRepo(repoPath, [
       "log",
@@ -168,27 +169,10 @@ router.get("/grep", async (req, res, next) => {
       return res.status(500).json({ error: result.stderr });
     }
 
-    const matches: Array<{ file: string; line: number; content: string }> = [];
+    const maxMatches = parseBoundedLimit(req.query.limit, 500, 1000);
+    const matches = parseGitLineMatches(result.stdout).slice(0, maxMatches);
 
-    for (const raw of result.stdout.split("\n")) {
-      if (!raw) continue;
-
-      const colonIdx = raw.indexOf(":");
-      const secondColonIdx = raw.indexOf(":", colonIdx + 1);
-
-      if (colonIdx > 0 && secondColonIdx > colonIdx) {
-        const file = raw.slice(0, colonIdx);
-        const lineStr = raw.slice(colonIdx + 1, secondColonIdx);
-        const lineNum = Number(lineStr);
-        const content = raw.slice(secondColonIdx + 1);
-
-        if (Number.isFinite(lineNum)) {
-          matches.push({ file, line: lineNum, content });
-        }
-      }
-    }
-
-    res.json({ matches });
+    res.json({ matches, truncated: matches.length === maxMatches });
   } catch (err) {
     next(err);
   }
@@ -205,7 +189,7 @@ router.get("/pickaxe", async (req, res, next) => {
       return res.status(400).json({ error: "repo and query required" });
     }
 
-    const limit = Math.min(Number(req.query.limit) || 50, 200);
+    const limit = parseBoundedLimit(req.query.limit);
     const flag = mode === "G" ? "-G" : "-S";
 
     const result = await gitInRepo(repoPath, [
@@ -274,7 +258,7 @@ router.get("/line-history", async (req, res, next) => {
     }
 
     const range = `${start},${end}:${file}`;
-    const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
+    const limit = parseBoundedLimit(req.query.limit);
 
     const result = await gitInRepo(repoPath, [
       "log",
@@ -316,29 +300,17 @@ router.get("/todos", async (req, res, next) => {
       return res.status(500).json({ error: result.stderr });
     }
 
-    const items: Array<{ file: string; line: number; content: string; tag: string }> = [];
+    const maxItems = parseBoundedLimit(req.query.limit, 500, 1000);
+    const items = parseGitLineMatches(result.stdout)
+      .slice(0, maxItems)
+      .map(({ file, line, content }) => ({
+        file,
+        line,
+        content,
+        tag: content.match(/\b(FIXME|BUG|TODO|HACK|OPTIMIZE|REVIEW|XXX)\b/i)?.[1]?.toUpperCase() ?? "TODO",
+      }));
 
-    for (const raw of result.stdout.split("\n")) {
-      if (!raw) continue;
-
-      const colonIdx = raw.indexOf(":");
-      const secondColonIdx = raw.indexOf(":", colonIdx + 1);
-
-      if (colonIdx > 0 && secondColonIdx > colonIdx) {
-        const file = raw.slice(0, colonIdx);
-        const lineStr = raw.slice(colonIdx + 1, secondColonIdx);
-        const lineNum = Number(lineStr);
-        const content = raw.slice(secondColonIdx + 1);
-
-        if (!Number.isFinite(lineNum)) continue;
-
-        const tag = content.match(/\b(FIXME|BUG|TODO|HACK|OPTIMIZE|REVIEW|XXX)\b/i)?.[1]?.toUpperCase() ?? "TODO";
-
-        items.push({ file, line: lineNum, content, tag });
-      }
-    }
-
-    res.json({ items });
+    res.json({ items, truncated: items.length === maxItems });
   } catch (err) {
     next(err);
   }

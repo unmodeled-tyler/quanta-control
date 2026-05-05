@@ -30,7 +30,7 @@ type DragState = {
 } | null;
 
 export function LogView() {
-  const { repoPath, commits } = useRepoStore();
+  const { repoPath, commits, refresh } = useRepoStore();
   const [mode, setMode] = useState<"list" | "graph">("graph");
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
   const [diffCache, setDiffCache] = useState<Record<string, FileDiff[]>>({});
@@ -267,6 +267,7 @@ export function LogView() {
                     try {
                       await api.cherryPick(repoPath, activeCommit.hash);
                       setCherryPickSuccess(`Cherry-picked ${activeCommit.shortHash}`);
+                      void refresh();
                     } catch (err) {
                       setCherryPickError(err instanceof Error ? err.message : "Cherry-pick failed");
                     } finally {
