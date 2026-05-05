@@ -62,6 +62,7 @@ export function ExplorerView() {
   const [searchResults, setSearchResults] = useState<GrepMatch[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchTruncated, setSearchTruncated] = useState(false);
   const [pickaxeMode, setPickaxeMode] = useState<PickaxeMode>("S");
 
   // Compare
@@ -75,6 +76,7 @@ export function ExplorerView() {
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [todoLoading, setTodoLoading] = useState(false);
   const [todoError, setTodoError] = useState<string | null>(null);
+  const [todoTruncated, setTodoTruncated] = useState(false);
 
   // Tags
   const [tags, setTags] = useState<Tag[]>([]);
@@ -84,6 +86,7 @@ export function ExplorerView() {
   const [newTagMessage, setNewTagMessage] = useState("");
   const [newTagRef, setNewTagRef] = useState("");
   const [tagCreating, setTagCreating] = useState(false);
+  const [deletingTagName, setDeletingTagName] = useState<string | null>(null);
 
   // Line history (for blame view)
   const [lineHistoryRange, setLineHistoryRange] = useState<{ start: number; end: number } | null>(null);
@@ -172,10 +175,12 @@ export function ExplorerView() {
     setSearchLoading(true);
     setSearchError(null);
     setSearchResults([]);
+    setSearchTruncated(false);
 
     try {
       const result = await api.grepCode(repoPath, searchQuery.trim());
       setSearchResults(result.matches);
+      setSearchTruncated(Boolean(result.truncated));
       if (result.matches.length === 0) {
         setSearchError("No matches found");
       }
@@ -237,11 +242,13 @@ export function ExplorerView() {
     let cancelled = false;
     setTodoLoading(true);
     setTodoError(null);
+    setTodoTruncated(false);
 
     api.scanTodos(repoPath)
       .then((result) => {
         if (!cancelled) {
           setTodoItems(result.items);
+          setTodoTruncated(Boolean(result.truncated));
           if (result.items.length === 0) {
             setTodoError("No TODOs or FIXMEs found");
           }
@@ -311,12 +318,15 @@ export function ExplorerView() {
     if (!repoPath) return;
     if (!window.confirm(`Delete tag "${name}"?`)) return;
     setTagError(null);
+    setDeletingTagName(name);
     try {
       await api.deleteTag(repoPath, name);
       setTags((prev) => prev.filter((t) => t.name !== name));
       void refresh();
     } catch (err) {
       setTagError(err instanceof Error ? err.message : "Failed to delete tag");
+    } finally {
+      setDeletingTagName(null);
     }
   };
 
@@ -393,18 +403,22 @@ export function ExplorerView() {
     });
   };
 
-  const handleResultClick = (match: GrepMatch) => {
-    setSelectedFile(match.file);
+  const openFileInExplorer = useCallback((path: string) => {
+    setSelectedFile(path);
     setMode("browse");
-    const parts = match.file.split("/");
-    const dirs = new Set(expandedDirs);
-    let current = "";
-    for (let i = 0; i < parts.length - 1; i++) {
-      current = current ? `${current}/${parts[i]}` : parts[i]!;
-      dirs.add(current);
-    }
-    setExpandedDirs(dirs);
-  };
+    setExpandedDirs((prev) => {
+      const dirs = new Set(prev);
+      const parts = path.split("/");
+      let current = "";
+      for (let i = 0; i < parts.length - 1; i++) {
+        current = current ? `${current}/${parts[i]}` : parts[i]!;
+        dirs.add(current);
+      }
+      return dirs;
+    });
+  }, []);
+
+  const handleResultClick = (match: GrepMatch) => openFileInExplorer(match.file);
 
   if (!repoPath) {
     return (
@@ -570,6 +584,7 @@ export function ExplorerView() {
                 {searchResults.length > 0 && (
                   <div className="px-3 py-1.5 text-zinc-500 border-b border-zinc-800/40">
                     {searchResults.length} match{searchResults.length !== 1 ? "es" : ""}
+                    {searchTruncated && <span className="block text-[10px] text-amber-400">Showing first {searchResults.length} results</span>}
                   </div>
                 )}
                 {searchResults.map((match, i) => (
@@ -626,6 +641,7 @@ export function ExplorerView() {
                 {todoItems.length > 0 && (
                   <div className="px-3 py-1.5 text-zinc-500 border-b border-zinc-800/40">
                     {todoItems.length} item{todoItems.length !== 1 ? "s" : ""}
+                    {todoTruncated && <span className="block text-[10px] text-amber-400">Showing first {todoItems.length} items</span>}
                   </div>
                 )}
                 {groupTodosByTag(todoItems).map(({ tag, items: groupItems }) => (
@@ -636,18 +652,7 @@ export function ExplorerView() {
                     {groupItems.map((item, i) => (
                       <button
                         key={`${item.file}:${item.line}:${i}`}
-                        onClick={() => {
-                          setSelectedFile(item.file);
-                          setMode("browse");
-                          const parts = item.file.split("/");
-                          const dirs = new Set(expandedDirs);
-                          let current = "";
-                          for (let j = 0; j < parts.length - 1; j++) {
-                            current = current ? `${current}/${parts[j]}` : parts[j]!;
-                            dirs.add(current);
-                          }
-                          setExpandedDirs(dirs);
-                        }}
+                        onClick={() => openFileInExplorer(item.file)}
                         className="w-full text-left px-3 py-1.5 hover:bg-zinc-800/40 transition-colors border-b border-zinc-800/20"
                       >
                         <div className="text-zinc-400 font-mono truncate">{item.file}</div>
@@ -722,12 +727,17 @@ export function ExplorerView() {
                       </div>
                       <button
                         onClick={() => deleteTagAction(tag.name)}
+                        disabled={deletingTagName === tag.name}
                         title="Delete tag"
-                        className="p-1 text-zinc-600 hover:text-red-400 transition-colors"
+                        className="p-1 text-zinc-600 hover:text-red-400 disabled:opacity-40 transition-colors"
                       >
-                        <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M18 6L6 18M6 6l12 12" />
-                        </svg>
+                        {deletingTagName === tag.name ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <svg className="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M18 6L6 18M6 6l12 12" />
+                          </svg>
+                        )}
                       </button>
                     </div>
                   ))

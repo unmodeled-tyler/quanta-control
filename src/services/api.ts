@@ -294,7 +294,7 @@ export function getFileHistory(repo: string, file: string, limit = 50) {
 
 export function grepCode(repo: string, pattern: string, ignoreCase = true) {
   const params = new URLSearchParams({ repo, pattern, ignoreCase: String(ignoreCase) });
-  return api<{ matches: GrepMatch[] }>(`/api/explorer/grep?${params}`);
+  return api<{ matches: GrepMatch[]; truncated?: boolean }>(`/api/explorer/grep?${params}`);
 }
 
 export function pickaxeSearch(repo: string, query: string, mode: PickaxeMode = "S", limit = 50) {
@@ -319,7 +319,7 @@ export function getLineHistory(repo: string, file: string, start: number, end: n
 }
 
 export function scanTodos(repo: string) {
-  return api<{ items: TodoItem[] }>(`/api/explorer/todos?repo=${encodeURIComponent(repo)}`);
+  return api<{ items: TodoItem[]; truncated?: boolean }>(`/api/explorer/todos?repo=${encodeURIComponent(repo)}`);
 }
 
 export function getTags(repo: string) {
