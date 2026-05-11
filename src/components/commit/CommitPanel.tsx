@@ -5,12 +5,26 @@ import { useRepoStore } from "../../stores/repoStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import * as api from "../../services/api";
 
+const BRAILLE_SPINNER_FRAMES: [string, ...string[]] = [
+  "⠋",
+  "⠙",
+  "⠹",
+  "⠸",
+  "⠼",
+  "⠴",
+  "⠦",
+  "⠧",
+  "⠇",
+  "⠏",
+];
+
 export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
   const { repoPath, status } = useRepoStore();
   const { settings, updateSetting } = useSettingsStore();
   const [message, setMessage] = useState("");
   const [committing, setCommitting] = useState(false);
   const [generatingMessage, setGeneratingMessage] = useState(false);
+  const [spinnerFrame, setSpinnerFrame] = useState(0);
   const [generationError, setGenerationError] = useState("");
   const [pushDialog, setPushDialog] = useState(false);
   const [pushing, setPushing] = useState(false);
@@ -21,6 +35,19 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
     status?.files.some(
       (f) => f.stagedStatus === "staged" || f.stagedStatus === "partially_staged",
     ) ?? false;
+
+  useEffect(() => {
+    if (!generatingMessage) {
+      setSpinnerFrame(0);
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setSpinnerFrame((frame) => (frame + 1) % BRAILLE_SPINNER_FRAMES.length);
+    }, 80);
+
+    return () => window.clearInterval(timer);
+  }, [generatingMessage]);
 
   const doPush = async () => {
     if (!repoPath) return;
@@ -171,6 +198,34 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
           />,
           document.body,
         )}
+
+      {generatingMessage &&
+        createPortal(
+          <CommitMessageGenerationOverlay
+            frame={BRAILLE_SPINNER_FRAMES[spinnerFrame] ?? BRAILLE_SPINNER_FRAMES[0]}
+          />,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+function CommitMessageGenerationOverlay({ frame }: { frame: string }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/55 backdrop-blur-[2px]">
+      <div
+        className="flex min-w-[220px] flex-col items-center gap-3 rounded-lg border border-emerald-500/20 bg-zinc-950/90 px-6 py-5 shadow-2xl shadow-black/50"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="font-mono text-5xl leading-none text-emerald-300 drop-shadow-[0_0_18px_rgba(52,211,153,0.45)]">
+          {frame}
+        </div>
+        <div className="text-sm font-medium text-zinc-200">Generating commit message</div>
+        <div className="h-1 w-36 overflow-hidden rounded-full bg-zinc-800">
+          <div className="h-full w-1/3 animate-[pulse_0.9s_ease-in-out_infinite] rounded-full bg-emerald-400" />
+        </div>
+      </div>
     </div>
   );
 }
