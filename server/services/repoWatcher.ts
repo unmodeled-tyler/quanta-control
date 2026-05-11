@@ -1,4 +1,5 @@
 import chokidar from "chokidar";
+import { sep } from "path";
 
 interface WatcherClient {
   id: number;
@@ -14,25 +15,10 @@ class RepoWatcherInstance {
 
   constructor(private repoPath: string) {
     this.watcher = chokidar.watch(repoPath, {
-      ignored: [
-        "**/.git/**",
-        "**/node_modules/**",
-        "**/.venv/**",
-        "**/build/**",
-        "**/dist/**",
-        "**/.idea/**",
-        "**/.vscode/**",
-        "**/*.log",
-        "**/.DS_Store",
-        "**/coverage/**",
-        "**/.next/**",
-        "**/out/**",
-        "**/.nuxt/**",
-        "**/.cache/**",
-      ],
+      ignored: shouldIgnorePath,
       ignoreInitial: true,
       persistent: true,
-      depth: 20,
+      depth: 12,
       awaitWriteFinish: { stabilityThreshold: 150, pollInterval: 100 },
     });
 
@@ -41,7 +27,12 @@ class RepoWatcherInstance {
       .on("change", () => this.onChange())
       .on("unlink", () => this.onChange())
       .on("addDir", () => this.onChange())
-      .on("unlinkDir", () => this.onChange());
+      .on("unlinkDir", () => this.onChange())
+      .on("error", (err) => {
+        console.warn(`[quanta-control] Repo watcher disabled for ${this.repoPath}:`, err);
+        this.stop();
+        WATCHER_MAP.delete(this.repoPath);
+      });
   }
 
   private onChange() {
@@ -89,6 +80,31 @@ class RepoWatcherInstance {
 }
 
 const WATCHER_MAP = new Map<string, RepoWatcherInstance>();
+
+const IGNORED_SEGMENTS = new Set([
+  ".cache",
+  ".git",
+  ".idea",
+  ".next",
+  ".nuxt",
+  ".turbo",
+  ".venv",
+  ".vscode",
+  "build",
+  "coverage",
+  "dist",
+  "node_modules",
+  "out",
+]);
+
+function shouldIgnorePath(path: string) {
+  const segments = path.split(/[\\/]+/);
+  if (segments.some((segment) => IGNORED_SEGMENTS.has(segment))) {
+    return true;
+  }
+
+  return path.endsWith(`${sep}.DS_Store`) || path.endsWith(".log");
+}
 
 export function getRepoWatcher(repoPath: string): RepoWatcherInstance {
   let watcher = WATCHER_MAP.get(repoPath);
