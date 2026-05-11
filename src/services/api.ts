@@ -35,17 +35,34 @@ async function getToken(): Promise<string> {
   return cachedToken;
 }
 
+function describeNetworkError(err: unknown, url: string) {
+  const message = err instanceof Error ? err.message : String(err);
+  if (/failed to fetch/i.test(message)) {
+    return [
+      "Could not reach the local Quanta Control API.",
+      "Quit Quanta Control from the tray menu and relaunch it.",
+      `Request: ${url}`,
+    ].join(" ");
+  }
+  return message;
+}
+
 async function api<T>(url: string, options?: RequestInit, retry = true): Promise<T> {
   const token = await getToken();
   const hasBody = options?.body != null;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      ...(hasBody ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { "x-quanta-token": token } : {}),
-      ...options?.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        ...(hasBody ? { "Content-Type": "application/json" } : {}),
+        ...(token ? { "x-quanta-token": token } : {}),
+        ...options?.headers,
+      },
+    });
+  } catch (err) {
+    throw new Error(describeNetworkError(err, url));
+  }
   if (res.status === 401 && retry) {
     cachedToken = "";
     return api<T>(url, options, false);
