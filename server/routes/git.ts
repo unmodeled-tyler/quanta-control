@@ -144,10 +144,13 @@ function describeEmptyChatResponse(parsed: any) {
 
   return [
     "AI provider returned an empty commit message.",
+    finishReason === "length"
+      ? "The model hit its token limit before returning final content."
+      : "",
     `finish_reason=${finishReason};`,
     `message_keys=${messageKeys};`,
     `response_keys=${topLevelKeys}`,
-  ].join(" ");
+  ].filter(Boolean).join(" ");
 }
 
 function hasStagedChanges(statusOutput: string) {
@@ -491,7 +494,7 @@ router.post("/generate-commit-message", async (req, res, next) => {
         model,
         stream: false,
         temperature: 0.2,
-        max_tokens: 220,
+        max_tokens: 1000,
         messages: [
           {
             role: "system",
