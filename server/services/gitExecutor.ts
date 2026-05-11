@@ -1,13 +1,16 @@
 import { execFile, spawn } from "child_process";
 import { promisify } from "util";
 import { homedir } from "os";
-import { resolve } from "path";
+import { resolve, sep } from "path";
 
 const execFileAsync = promisify(execFile);
 
 export function expandPath(p: string): string {
-  if (p.startsWith("~")) {
-    return resolve(homedir(), p.slice(1));
+  if (p === "~") {
+    return homedir();
+  }
+  if (p.startsWith(`~${sep}`) || p.startsWith("~/")) {
+    return resolve(homedir(), p.slice(2));
   }
   return resolve(p);
 }
