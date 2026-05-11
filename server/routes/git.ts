@@ -96,6 +96,60 @@ function cleanGeneratedCommitMessage(value: string) {
     .slice(0, 1200);
 }
 
+function extractTextContent(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (!Array.isArray(value)) return "";
+
+  return value
+    .map((part) => {
+      if (typeof part === "string") return part;
+      if (!part || typeof part !== "object") return "";
+      const record = part as Record<string, unknown>;
+      if (typeof record.text === "string") return record.text;
+      if (typeof record.content === "string") return record.content;
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function extractGeneratedMessage(parsed: any) {
+  const choice = parsed?.choices?.[0];
+  const candidates = [
+    choice?.message?.content,
+    choice?.text,
+    parsed?.output_text,
+    parsed?.message?.content,
+  ];
+
+  for (const candidate of candidates) {
+    const message = cleanGeneratedCommitMessage(extractTextContent(candidate));
+    if (message) return message;
+  }
+
+  return "";
+}
+
+function describeEmptyChatResponse(parsed: any) {
+  const choice = parsed?.choices?.[0];
+  const finishReason = choice?.finish_reason ?? choice?.finishReason ?? "unknown";
+  const messageKeys =
+    choice?.message && typeof choice.message === "object"
+      ? Object.keys(choice.message).join(", ") || "none"
+      : "none";
+  const topLevelKeys =
+    parsed && typeof parsed === "object"
+      ? Object.keys(parsed).slice(0, 8).join(", ") || "none"
+      : "none";
+
+  return [
+    "AI provider returned an empty commit message.",
+    `finish_reason=${finishReason};`,
+    `message_keys=${messageKeys};`,
+    `response_keys=${topLevelKeys}`,
+  ].join(" ");
+}
+
 function hasStagedChanges(statusOutput: string) {
   return statusOutput
     .split("\n")
@@ -435,6 +489,7 @@ router.post("/generate-commit-message", async (req, res, next) => {
       apiKey,
       {
         model,
+        stream: false,
         temperature: 0.2,
         max_tokens: 220,
         messages: [
@@ -464,9 +519,9 @@ router.post("/generate-commit-message", async (req, res, next) => {
       return res.status(502).json({ error: "AI provider returned invalid JSON" });
     }
 
-    const message = cleanGeneratedCommitMessage(parsed.choices?.[0]?.message?.content ?? "");
+    const message = extractGeneratedMessage(parsed);
     if (!message) {
-      return res.status(502).json({ error: "AI provider returned an empty commit message" });
+      return res.status(502).json({ error: describeEmptyChatResponse(parsed) });
     }
 
     res.json({ message });
