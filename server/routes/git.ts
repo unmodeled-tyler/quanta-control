@@ -47,6 +47,40 @@ function chatCompletionsUrlCandidates(endpoint: string) {
   return [...new Set(candidates)];
 }
 
+function modelsUrlCandidates(endpoint: string) {
+  const trimmed = endpoint.trim().replace(/\/+$/, "");
+  const candidates: string[] = [];
+
+  try {
+    const parsed = new URL(trimmed);
+    const path = parsed.pathname.replace(/\/+$/, "");
+
+    if (path.endsWith("/chat/completions")) {
+      parsed.pathname = path.slice(0, -"/chat/completions".length) || "/";
+    }
+
+    const basePath = parsed.pathname.replace(/\/+$/, "");
+    if (!basePath || basePath === "/") {
+      parsed.pathname = "/v1/models";
+      candidates.push(parsed.toString());
+    } else {
+      const direct = new URL(parsed);
+      direct.pathname = `${basePath}/models`;
+      candidates.push(direct.toString());
+
+      if (!basePath.endsWith("/v1")) {
+        const v1 = new URL(parsed);
+        v1.pathname = `${basePath}/v1/models`;
+        candidates.push(v1.toString());
+      }
+    }
+  } catch {
+    candidates.push(`${trimmed}/models`);
+  }
+
+  return [...new Set(candidates)];
+}
+
 function compactOutput(value: string, maxChars = MAX_DIFF_CHARS) {
   if (value.length <= maxChars) return value;
   return `${value.slice(0, maxChars)}\n\n[Diff truncated for length]`;
@@ -107,6 +141,56 @@ async function requestChatCompletion(
         continue;
       }
 
+      throw createHttpError(
+        502,
+        `Could not reach AI provider: ${message}. Tried: ${urls.join(", ")}`,
+      );
+    }
+
+    const bodyText = await response.text();
+    if (response.ok) {
+      return { bodyText, url };
+    }
+
+    lastStatus = response.status;
+    lastError = bodyText || response.statusText;
+    try {
+      const parsed = JSON.parse(bodyText);
+      lastError = parsed.error?.message || parsed.message || lastError;
+    } catch {}
+
+    if (response.status !== 404 || index === urls.length - 1) {
+      break;
+    }
+  }
+
+  const attempted = urls.length > 1 ? ` Tried: ${urls.join(", ")}` : ` Tried: ${lastUrl}`;
+  throw createHttpError(502, `AI provider error (${lastStatus}): ${lastError}.${attempted}`);
+}
+
+async function requestModels(endpoint: string, apiKey: string | undefined) {
+  const urls = modelsUrlCandidates(endpoint);
+  let lastError = "";
+  let lastStatus = 0;
+  let lastUrl = urls[0] ?? endpoint;
+
+  for (let index = 0; index < urls.length; index += 1) {
+    const url = urls[index];
+    if (!url) continue;
+    lastUrl = url;
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "GET",
+        headers: {
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (index < urls.length - 1) continue;
       throw createHttpError(
         502,
         `Could not reach AI provider: ${message}. Tried: ${urls.join(", ")}`,
@@ -386,6 +470,45 @@ router.post("/generate-commit-message", async (req, res, next) => {
     }
 
     res.json({ message });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/test-ai-endpoint", async (req, res, next) => {
+  try {
+    const { endpoint, model, apiKey } = req.body as {
+      endpoint?: string;
+      model?: string;
+      apiKey?: string;
+    };
+
+    if (!endpoint) {
+      return res.status(400).json({ error: "AI endpoint is required" });
+    }
+
+    const { bodyText, url } = await requestModels(endpoint, apiKey);
+    let parsed: any;
+    try {
+      parsed = JSON.parse(bodyText);
+    } catch {
+      return res.status(502).json({ error: "AI provider returned invalid JSON from /models" });
+    }
+
+    const modelIds = Array.isArray(parsed.data)
+      ? parsed.data
+          .map((entry: { id?: unknown }) => entry.id)
+          .filter((id: unknown): id is string => typeof id === "string")
+      : [];
+    const requestedModel = model?.trim() || "";
+    const modelFound = requestedModel ? modelIds.includes(requestedModel) : null;
+
+    res.json({
+      success: true,
+      url,
+      modelFound,
+      modelCount: modelIds.length,
+    });
   } catch (err) {
     next(err);
   }

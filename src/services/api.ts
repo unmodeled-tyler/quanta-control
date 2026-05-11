@@ -108,6 +108,22 @@ export function generateCommitMessage(
   });
 }
 
+export function testAiEndpoint(options: {
+  endpoint: string;
+  model?: string;
+  apiKey?: string;
+}) {
+  return api<{
+    success: boolean;
+    url: string;
+    modelFound: boolean | null;
+    modelCount: number;
+  }>(`${GIT_BASE}/test-ai-endpoint`, {
+    method: "POST",
+    body: JSON.stringify(options),
+  });
+}
+
 export function getLog(repo: string, count = 50, branch?: string) {
   const params = new URLSearchParams({ repo, count: String(count) });
   if (branch) params.set("branch", branch);

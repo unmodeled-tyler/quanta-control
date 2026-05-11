@@ -18,6 +18,11 @@ export function SettingsView() {
   const { settings, updateSetting, resetSettings } = useSettingsStore();
   const { repoPath } = useRepoStore();
   const [gitConfig, setGitConfig] = useState<{ name: string; email: string } | null>(null);
+  const [testingAiEndpoint, setTestingAiEndpoint] = useState(false);
+  const [aiEndpointTestResult, setAiEndpointTestResult] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!repoPath) return;
@@ -33,6 +38,42 @@ export function SettingsView() {
       })
       .catch(() => {});
   }, [repoPath]);
+
+  const handleTestAiEndpoint = async () => {
+    const endpoint = settings.aiCommitEndpoint.trim();
+    if (!endpoint) {
+      setAiEndpointTestResult({ ok: false, message: "Set an endpoint first." });
+      return;
+    }
+
+    setTestingAiEndpoint(true);
+    setAiEndpointTestResult(null);
+    try {
+      const result = await api.testAiEndpoint({
+        endpoint,
+        model: settings.aiCommitModel.trim() || undefined,
+        apiKey: settings.aiCommitApiKey.trim() || undefined,
+      });
+      const model = settings.aiCommitModel.trim();
+      const modelMessage =
+        !model || result.modelFound === null
+          ? `${result.modelCount} model${result.modelCount === 1 ? "" : "s"} returned.`
+          : result.modelFound
+          ? `Model "${model}" found.`
+          : `Connected, but "${model}" was not listed.`;
+      setAiEndpointTestResult({
+        ok: result.success && result.modelFound !== false,
+        message: `${modelMessage} Tested ${result.url}`,
+      });
+    } catch (err) {
+      setAiEndpointTestResult({
+        ok: false,
+        message: err instanceof Error ? err.message : "Endpoint test failed.",
+      });
+    } finally {
+      setTestingAiEndpoint(false);
+    }
+  };
 
   return (
     <div className="h-full overflow-y-auto">
@@ -192,6 +233,24 @@ export function SettingsView() {
               placeholder="Optional for local endpoints"
               type="password"
             />
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleTestAiEndpoint}
+                disabled={testingAiEndpoint || !settings.aiCommitEndpoint.trim()}
+                className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:hover:bg-zinc-800 border border-zinc-700/80 rounded-md text-sm font-medium transition-all duration-150"
+              >
+                {testingAiEndpoint ? "Testing..." : "Test Endpoint"}
+              </button>
+              {aiEndpointTestResult && (
+                <div
+                  className={`min-w-0 flex-1 text-xs ${
+                    aiEndpointTestResult.ok ? "text-emerald-400" : "text-red-400"
+                  }`}
+                >
+                  {aiEndpointTestResult.message}
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
