@@ -37,7 +37,8 @@ import { TagsPanel } from "./TagsPanel";
 type ExplorerMode = "browse" | "search" | "pickaxe" | "compare" | "todos" | "tags";
 
 export function ExplorerView() {
-  const { repoPath, refresh } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const refresh = useRepoStore((s) => s.refresh);
 
   // Mode
   const [mode, setMode] = useState<ExplorerMode>("browse");

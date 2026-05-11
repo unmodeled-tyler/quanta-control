@@ -17,8 +17,10 @@ export function useKeyboardShortcuts({
   selectedFile: { path: string } | null;
   onSelectFile: (file: null) => void;
 }) {
-  const { repoPath, status, refresh } = useRepoStore();
-  const { settings } = useSettingsStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const status = useRepoStore((s) => s.status);
+  const refresh = useRepoStore((s) => s.refresh);
+  const settings = useSettingsStore((s) => s.settings);
 
   const metaRef = useRef({
     repoPath,

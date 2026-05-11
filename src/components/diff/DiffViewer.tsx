@@ -43,7 +43,7 @@ function HunkActions({
   hunk: FileDiff["hunks"][number];
   onAction: () => void;
 }) {
-  const { repoPath } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
   const [busy, setBusy] = useState(false);
 
   const handleStage = useCallback(async () => {

@@ -16,6 +16,12 @@ function createHttpError(status: number, message: string) {
   return Object.assign(new Error(message), { status });
 }
 
+function assertSafeRef(value: string, label: string) {
+  if (value.startsWith("-")) {
+    throw createHttpError(400, `${label} must not start with "-"`);
+  }
+}
+
 function chatCompletionsUrlCandidates(endpoint: string) {
   const trimmed = endpoint.trim().replace(/\/+$/, "");
   const candidates: string[] = [];
@@ -789,10 +795,11 @@ router.post("/checkout", async (req, res, next) => {
     if (!repo || !branch) {
       return res.status(400).json({ error: "repo and branch required" });
     }
+    assertSafeRef(branch, "branch name");
 
     const args = ["checkout"];
     if (shouldCreate) args.push("-b");
-    args.push(branch);
+    args.push("--", branch);
 
     const result = await gitInRepo(repo, args);
     if (result.exitCode !== 0) {
@@ -810,9 +817,10 @@ router.post("/delete-branch", async (req, res, next) => {
     if (!repo || !branch) {
       return res.status(400).json({ error: "repo and branch required" });
     }
+    assertSafeRef(branch, "branch name");
 
     const flag = force ? "-D" : "-d";
-    const result = await gitInRepo(repo, ["branch", flag, branch]);
+    const result = await gitInRepo(repo, ["branch", flag, "--", branch]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -863,8 +871,14 @@ router.post("/pull", async (req, res, next) => {
     if (!repo) return res.status(400).json({ error: "repo path required" });
 
     const args = ["pull"];
-    if (remote) args.push(remote);
-    if (branch) args.push(branch);
+    if (remote) {
+      assertSafeRef(remote, "remote name");
+      args.push("--", remote);
+    }
+    if (branch) {
+      assertSafeRef(branch, "branch name");
+      args.push(branch);
+    }
 
     const result = await gitInRepo(repo, args);
     if (result.exitCode !== 0) {
@@ -883,8 +897,14 @@ router.post("/push", async (req, res, next) => {
 
     const args = ["push"];
     if (force) args.push("--force-with-lease");
-    if (remote) args.push(remote);
-    if (branch) args.push(branch);
+    if (remote) {
+      assertSafeRef(remote, "remote name");
+      args.push(remote);
+    }
+    if (branch) {
+      assertSafeRef(branch, "branch name");
+      args.push(branch);
+    }
 
     const result = await gitInRepo(repo, args);
     if (result.exitCode !== 0) {
@@ -961,7 +981,7 @@ router.post("/gitignore", async (req, res, next) => {
 
     await appendFile(gitignorePath, addition, "utf-8");
 
-    await gitInRepo(repo, ["rm", "--cached", "--quiet", ...newPatterns.filter((p: string) => !p.endsWith("/"))]).catch(() => null);
+    await gitInRepo(repo, ["rm", "--cached", "--quiet", "--", ...newPatterns.filter((p: string) => !p.endsWith("/"))]).catch(() => null);
 
     res.json({ success: true, added: newPatterns });
   } catch (err) {
@@ -1149,6 +1169,7 @@ router.post("/tag-create", async (req, res, next) => {
   try {
     const { repo, name, message, ref } = req.body;
     if (!repo || !name) return res.status(400).json({ error: "repo and name required" });
+    assertSafeRef(name, "tag name");
 
     const args = ["tag"];
     if (message) args.push("-a", "-m", message);
@@ -1170,8 +1191,9 @@ router.post("/tag-delete", async (req, res, next) => {
   try {
     const { repo, name } = req.body;
     if (!repo || !name) return res.status(400).json({ error: "repo and name required" });
+    assertSafeRef(name, "tag name");
 
-    const result = await gitInRepo(repo, ["tag", "-d", name]);
+    const result = await gitInRepo(repo, ["tag", "-d", "--", name]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -1188,6 +1210,7 @@ router.post("/cherry-pick", async (req, res, next) => {
   try {
     const { repo, commit } = req.body;
     if (!repo || !commit) return res.status(400).json({ error: "repo and commit required" });
+    assertSafeRef(commit, "commit hash");
 
     const result = await gitInRepo(repo, ["cherry-pick", commit]);
     if (result.exitCode !== 0) {

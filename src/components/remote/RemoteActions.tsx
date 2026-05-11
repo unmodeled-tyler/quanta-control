@@ -4,7 +4,9 @@ import { useState } from "react";
 import * as api from "../../services/api";
 
 export function RemoteActions() {
-  const { repoPath, status, refresh } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const status = useRepoStore((s) => s.status);
+  const refresh = useRepoStore((s) => s.refresh);
   const [loading, setLoading] = useState<string | null>(null);
 
   if (!repoPath) return null;

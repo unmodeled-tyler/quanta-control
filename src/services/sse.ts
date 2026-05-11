@@ -1,6 +1,22 @@
 let currentSource: EventSource | null = null;
 let currentRepo: string | null = null;
 let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
+let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let reconnectAttempt = 0;
+
+const MAX_RECONNECT_DELAY_MS = 30_000;
+const BASE_RECONNECT_DELAY_MS = 500;
+
+function clearTimers() {
+  if (refreshTimeout) {
+    clearTimeout(refreshTimeout);
+    refreshTimeout = null;
+  }
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
+  }
+}
 
 function closeCurrent() {
   if (currentSource) {
@@ -8,10 +24,13 @@ function closeCurrent() {
     currentSource = null;
   }
   currentRepo = null;
-  if (refreshTimeout) {
-    clearTimeout(refreshTimeout);
-    refreshTimeout = null;
-  }
+  clearTimers();
+}
+
+function getReconnectDelay() {
+  const delay = Math.min(BASE_RECONNECT_DELAY_MS * 2 ** reconnectAttempt, MAX_RECONNECT_DELAY_MS);
+  reconnectAttempt += 1;
+  return delay;
 }
 
 export async function connectRepoEvents(repo: string, refresh: () => void) {
@@ -19,7 +38,12 @@ export async function connectRepoEvents(repo: string, refresh: () => void) {
 
   closeCurrent();
   currentRepo = repo;
+  reconnectAttempt = 0;
 
+  await openConnection(repo, refresh);
+}
+
+async function openConnection(repo: string, refresh: () => void) {
   // Fetch auth token for SSE (EventSource doesn't support custom headers,
   // so we pass the token as a query parameter for this endpoint only)
   let tokenParam = "";
@@ -35,6 +59,7 @@ export async function connectRepoEvents(repo: string, refresh: () => void) {
   currentSource = source;
 
   source.onmessage = () => {
+    reconnectAttempt = 0;
     if (refreshTimeout) clearTimeout(refreshTimeout);
     refreshTimeout = setTimeout(() => {
       refresh();
@@ -42,7 +67,15 @@ export async function connectRepoEvents(repo: string, refresh: () => void) {
   };
 
   source.onerror = () => {
-    closeCurrent();
+    source.close();
+    currentSource = null;
+
+    const delay = getReconnectDelay();
+    reconnectTimeout = setTimeout(() => {
+      if (currentRepo === repo) {
+        void openConnection(repo, refresh);
+      }
+    }, delay);
   };
 
   source.onopen = () => {};

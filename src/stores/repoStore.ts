@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { StatusResult, Branch, CommitInfo, GitFile } from "../types/git";
+import type { StatusResult, Branch, CommitInfo } from "../types/git";
 import * as api from "../services/api";
 import { saveRecentRepo } from "../utils/recentRepos";
 
@@ -16,25 +16,10 @@ function rememberRecentRepo(path: string) {
 function buildStatusSignature(status: StatusResult | null) {
   if (!status) return null;
 
-  return JSON.stringify({
-    branch: status.branch,
-    ahead: status.ahead,
-    behind: status.behind,
-    staged: status.staged,
-    unstaged: status.unstaged,
-    untracked: status.untracked,
-    conflicted: status.conflicted,
-    files: [...status.files]
-      .sort((left, right) => left.path.localeCompare(right.path))
-      .map((file: GitFile) => ({
-        path: file.path,
-        oldPath: file.oldPath || "",
-        status: file.status,
-        stagedStatus: file.stagedStatus,
-        additions: file.additions,
-        deletions: file.deletions,
-      })),
-  });
+  const fileCount = status.files.length;
+  const firstPath = fileCount > 0 ? status.files[0]?.path : "";
+
+  return `${status.branch}|${status.ahead}|${status.behind}|${status.staged}|${status.unstaged}|${status.untracked}|${status.conflicted}|${fileCount}|${firstPath}`;
 }
 
 interface RepoStore {

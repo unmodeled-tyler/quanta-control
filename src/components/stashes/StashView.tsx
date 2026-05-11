@@ -5,7 +5,7 @@ import * as api from "../../services/api";
 import type { StashEntry } from "../../types/git";
 
 export function StashView() {
-  const { repoPath } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
   const [stashes, setStashes] = useState<StashEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<Set<string>>(new Set());

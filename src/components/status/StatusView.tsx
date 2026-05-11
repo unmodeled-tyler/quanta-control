@@ -206,7 +206,11 @@ export function StatusView({
   onSelectFile: (file: GitFile | null) => void;
   selectedFile: GitFile | null;
 }) {
-  const { repoPath, status, refreshStatus, lastStatusUpdateAt, lastChangeDetectedAt } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const status = useRepoStore((s) => s.status);
+  const refreshStatus = useRepoStore((s) => s.refreshStatus);
+  const lastStatusUpdateAt = useRepoStore((s) => s.lastStatusUpdateAt);
+  const lastChangeDetectedAt = useRepoStore((s) => s.lastChangeDetectedAt);
   const [stagedOpen, setStagedOpen] = useState(true);
   const [unstagedOpen, setUnstagedOpen] = useState(true);
   const [showChangeNotice, setShowChangeNotice] = useState(false);

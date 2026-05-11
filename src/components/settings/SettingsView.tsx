@@ -15,8 +15,10 @@ import { useRepoStore } from "../../stores/repoStore";
 import * as api from "../../services/api";
 
 export function SettingsView() {
-  const { settings, updateSetting, resetSettings } = useSettingsStore();
-  const { repoPath } = useRepoStore();
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
+  const resetSettings = useSettingsStore((s) => s.resetSettings);
+  const repoPath = useRepoStore((s) => s.repoPath);
   const [gitConfig, setGitConfig] = useState<{ name: string; email: string } | null>(null);
   const [testingAiEndpoint, setTestingAiEndpoint] = useState(false);
   const [aiEndpointTestResult, setAiEndpointTestResult] = useState<{

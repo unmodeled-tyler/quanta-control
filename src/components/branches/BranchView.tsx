@@ -10,7 +10,10 @@ import { useRepoStore } from "../../stores/repoStore";
 import * as api from "../../services/api";
 
 export function BranchView() {
-  const { repoPath, branches, refreshBranches, refreshStatus } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const branches = useRepoStore((s) => s.branches);
+  const refreshBranches = useRepoStore((s) => s.refreshBranches);
+  const refreshStatus = useRepoStore((s) => s.refreshStatus);
   const [newBranch, setNewBranch] = useState("");
   const [creating, setCreating] = useState(false);
 

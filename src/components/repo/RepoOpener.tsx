@@ -13,7 +13,7 @@ interface RepoOpenerProps {
 }
 
 export function RepoOpener({ onSelect }: RepoOpenerProps) {
-  const { settings } = useSettingsStore();
+  const settings = useSettingsStore((s) => s.settings);
   const [path, setPath] = useState(settings.defaultRepoPath);
   const [recent, setRecent] = useState<Array<{ name: string; path: string }>>([]);
   const [error, setError] = useState<string | null>(null);

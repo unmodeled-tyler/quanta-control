@@ -27,7 +27,7 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
-    "start": "node ./build/server/index.js",
+    "start": "node ./build/server/server/index.js",
     "start:cli": "node ./bin/quanta-control.js",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -45,7 +45,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "@types/chokidar": "^2.1.7",
+    "@eslint/js": "^9.39.4",
     "@tailwindcss/vite": "^4.1.0",
     "@types/cors": "^2.8.17",
     "@types/diff": "^7.0.0",
@@ -53,14 +53,15 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@vitejs/plugin-react": "^4.4.0",
-    "autoprefixer": "^10.4.21",
-    "electron": "^41.2.1",
     "concurrently": "^9.1.0",
+    "electron": "^41.2.1",
     "eslint": "^9.24.0",
-    "postcss": "^8.5.3",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.26",
     "tailwindcss": "^4.1.0",
     "tsx": "^4.19.0",
     "typescript": "^5.8.0",
+    "typescript-eslint": "^8.59.3",
     "vite": "^6.3.0"
   }
 }

@@ -21,7 +21,9 @@ const ACTION_COLORS: Record<RebaseAction, string> = {
 };
 
 export function RebaseView() {
-  const { repoPath, commits, refresh } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const commits = useRepoStore((s) => s.commits);
+  const refresh = useRepoStore((s) => s.refresh);
   const [commitCount, setCommitCount] = useState(10);
   const [todos, setTodos] = useState<RebaseTodoEntry[]>([]);
   const [initialized, setInitialized] = useState(false);

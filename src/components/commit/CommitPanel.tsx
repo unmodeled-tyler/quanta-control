@@ -19,8 +19,10 @@ const BRAILLE_SPINNER_FRAMES: [string, ...string[]] = [
 ];
 
 export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
-  const { repoPath, status } = useRepoStore();
-  const { settings, updateSetting } = useSettingsStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const status = useRepoStore((s) => s.status);
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSetting = useSettingsStore((s) => s.updateSetting);
   const [message, setMessage] = useState("");
   const [committing, setCommitting] = useState(false);
   const [generatingMessage, setGeneratingMessage] = useState(false);
@@ -222,9 +224,6 @@ function CommitMessageGenerationOverlay({ frame }: { frame: string }) {
           {frame}
         </div>
         <div className="text-sm font-medium text-zinc-200">Generating commit message</div>
-        <div className="h-1 w-36 overflow-hidden rounded-full bg-zinc-800">
-          <div className="h-full w-1/3 animate-[pulse_0.9s_ease-in-out_infinite] rounded-full bg-emerald-400" />
-        </div>
       </div>
     </div>
   );

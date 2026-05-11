@@ -39,7 +39,10 @@ export function MainLayout({
   currentView: View;
   onViewChange: (view: View) => void;
 }) {
-  const { repoPath, status, loading, refresh } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const status = useRepoStore((s) => s.status);
+  const loading = useRepoStore((s) => s.loading);
+  const refresh = useRepoStore((s) => s.refresh);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {

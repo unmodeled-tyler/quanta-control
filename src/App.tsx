@@ -47,8 +47,11 @@ type DragState =
   | null;
 
 export default function App() {
-  const { repoPath, setRepo, status, lastStatusUpdateAt } = useRepoStore();
-  const { settings } = useSettingsStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const setRepo = useRepoStore((s) => s.setRepo);
+  const status = useRepoStore((s) => s.status);
+  const lastStatusUpdateAt = useRepoStore((s) => s.lastStatusUpdateAt);
+  const settings = useSettingsStore((s) => s.settings);
   const [view, setView] = useState<View>("status");
   const [selectedFile, setSelectedFile] = useState<GitFile | null>(null);
   const [statusPanelWidth, setStatusPanelWidth] = useState(() => loadStoredNumber(STATUS_PANEL_WIDTH_KEY, 320));

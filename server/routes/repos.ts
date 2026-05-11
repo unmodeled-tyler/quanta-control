@@ -6,71 +6,80 @@ import { isGitRepo, expandPath } from "../services/gitExecutor.js";
 
 const router = Router();
 
-router.get("/validate", async (req, res) => {
-  const rawPath = req.query.path as string;
-  if (!rawPath) return res.status(400).json({ error: "path required" });
-
-  const resolved = expandPath(rawPath);
-  const valid = await isGitRepo(resolved);
-  res.json({ valid, resolvedPath: resolved });
-});
-
-router.get("/browse", async (req, res) => {
-  const rawPath = (req.query.path as string) || "~";
-  const dir = expandPath(rawPath);
-
+router.get("/validate", async (req, res, next) => {
   try {
-    const s = await stat(dir);
-    if (!s.isDirectory()) {
-      return res.json({ path: dir, isGitRepo: false, children: [] });
-    }
-  } catch {
-    return res.status(404).json({ error: "Directory not found" });
+    const rawPath = req.query.path as string;
+    if (!rawPath) return res.status(400).json({ error: "path required" });
+
+    const resolved = expandPath(rawPath);
+    const valid = await isGitRepo(resolved);
+    res.json({ valid, resolvedPath: resolved });
+  } catch (err) {
+    next(err);
   }
-
-  const isRepo = await isGitRepo(dir);
-  const entries = await readdir(dir);
-  const children: Array<{
-    name: string;
-    path: string;
-    isDirectory: boolean;
-    isGitRepo: boolean;
-  }> = [];
-
-  const hidden = req.query.hidden === "true";
-
-  const filtered = entries.filter((entry) => hidden || !entry.startsWith(".") || entry === ".git");
-
-  const results = await Promise.all(
-    filtered.map(async (entry) => {
-      const fullPath = join(dir, entry);
-      try {
-        const s = await stat(fullPath);
-        if (s.isDirectory()) {
-          const childIsRepo = await isGitRepo(fullPath);
-          return { name: entry, path: fullPath, isDirectory: true, isGitRepo: childIsRepo };
-        }
-      } catch {}
-      return null;
-    }),
-  );
-
-  for (const r of results) {
-    if (r) children.push(r);
-  }
-
-  children.sort((a, b) => {
-    if (a.isGitRepo !== b.isGitRepo) return a.isGitRepo ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
-
-  res.json({ path: dir, isGitRepo: isRepo, children });
 });
 
-router.get("/recent", async (_req, res) => {
-  const home = homedir();
+router.get("/browse", async (req, res, next) => {
+  try {
+    const rawPath = (req.query.path as string) || "~";
+    const dir = expandPath(rawPath);
 
-  const candidates = [
+    try {
+      const s = await stat(dir);
+      if (!s.isDirectory()) {
+        return res.json({ path: dir, isGitRepo: false, children: [] });
+      }
+    } catch {
+      return res.status(404).json({ error: "Directory not found" });
+    }
+
+    const isRepo = await isGitRepo(dir);
+    const entries = await readdir(dir);
+    const children: Array<{
+      name: string;
+      path: string;
+      isDirectory: boolean;
+      isGitRepo: boolean;
+    }> = [];
+
+    const hidden = req.query.hidden === "true";
+
+    const filtered = entries.filter((entry) => hidden || !entry.startsWith(".") || entry === ".git");
+
+    const results = await Promise.all(
+      filtered.map(async (entry) => {
+        const fullPath = join(dir, entry);
+        try {
+          const s = await stat(fullPath);
+          if (s.isDirectory()) {
+            const childIsRepo = await isGitRepo(fullPath);
+            return { name: entry, path: fullPath, isDirectory: true, isGitRepo: childIsRepo };
+          }
+        } catch {}
+        return null;
+      }),
+    );
+
+    for (const r of results) {
+      if (r) children.push(r);
+    }
+
+    children.sort((a, b) => {
+      if (a.isGitRepo !== b.isGitRepo) return a.isGitRepo ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    res.json({ path: dir, isGitRepo: isRepo, children });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/recent", async (_req, res, next) => {
+  try {
+    const home = homedir();
+
+    const candidates = [
     join(home, "projects"),
     join(home, "repos"),
     join(home, "code"),
@@ -108,7 +117,10 @@ router.get("/recent", async (_req, res) => {
 
   for (const batch of checks) repos.push(...batch);
 
-  res.json(repos);
+    res.json(repos);
+  } catch (err) {
+    next(err);
+  }
 });
 
 export default router;

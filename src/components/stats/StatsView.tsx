@@ -80,8 +80,8 @@ function SummaryCard({
 }
 
 export function StatsView({ onOpenSettings }: { onOpenSettings: () => void }) {
-  const { repoPath } = useRepoStore();
-  const { settings } = useSettingsStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const settings = useSettingsStore((s) => s.settings);
   const [activity, setActivity] = useState<CommitActivity | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

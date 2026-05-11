@@ -30,7 +30,9 @@ type DragState = {
 } | null;
 
 export function LogView() {
-  const { repoPath, commits, refresh } = useRepoStore();
+  const repoPath = useRepoStore((s) => s.repoPath);
+  const commits = useRepoStore((s) => s.commits);
+  const refresh = useRepoStore((s) => s.refresh);
   const [mode, setMode] = useState<"list" | "graph">("graph");
   const [selectedCommit, setSelectedCommit] = useState<string | null>(null);
   const [diffCache, setDiffCache] = useState<Record<string, FileDiff[]>>({});
