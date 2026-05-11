@@ -1,6 +1,7 @@
 import { Upload, Download, RefreshCw } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 import { useState } from "react";
+import { AlertDialog } from "../common/Dialog";
 import * as api from "../../services/api";
 
 export function RemoteActions() {
@@ -8,6 +9,7 @@ export function RemoteActions() {
   const status = useRepoStore((s) => s.status);
   const refresh = useRepoStore((s) => s.refresh);
   const [loading, setLoading] = useState<string | null>(null);
+  const [alertError, setAlertError] = useState<string | null>(null);
 
   if (!repoPath) return null;
 
@@ -17,7 +19,7 @@ export function RemoteActions() {
       await api.fetchRemote(repoPath);
       await refresh();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      setAlertError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(null);
     }
@@ -29,7 +31,7 @@ export function RemoteActions() {
       await api.pull(repoPath);
       await refresh();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      setAlertError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(null);
     }
@@ -41,7 +43,7 @@ export function RemoteActions() {
       await api.push(repoPath);
       await refresh();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      setAlertError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(null);
     }
@@ -79,6 +81,14 @@ export function RemoteActions() {
           <span className="text-emerald-400">{status!.ahead}</span>
         )}
       </button>
+
+      {alertError && (
+        <AlertDialog
+          title="Error"
+          message={alertError}
+          onClose={() => setAlertError(null)}
+        />
+      )}
     </div>
   );
 }

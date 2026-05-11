@@ -7,6 +7,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
+import { AlertDialog, ConfirmDialog } from "../common/Dialog";
 import * as api from "../../services/api";
 
 export function BranchView() {
@@ -16,6 +17,8 @@ export function BranchView() {
   const refreshStatus = useRepoStore((s) => s.refreshStatus);
   const [newBranch, setNewBranch] = useState("");
   const [creating, setCreating] = useState(false);
+  const [alertError, setAlertError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   if (!repoPath) return null;
 
@@ -28,7 +31,7 @@ export function BranchView() {
       await api.checkoutBranch(repoPath, name);
       await Promise.all([refreshBranches(), refreshStatus()]);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      setAlertError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -40,19 +43,18 @@ export function BranchView() {
       setNewBranch("");
       await Promise.all([refreshBranches(), refreshStatus()]);
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      setAlertError(err instanceof Error ? err.message : String(err));
     } finally {
       setCreating(false);
     }
   };
 
   const handleDelete = async (name: string) => {
-    if (!confirm(`Delete branch "${name}"?`)) return;
     try {
       await api.deleteBranch(repoPath, name);
       await refreshBranches();
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : String(err));
+      setAlertError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -125,7 +127,7 @@ export function BranchView() {
                   Switch
                 </button>
                 <button
-                  onClick={() => handleDelete(branch.name)}
+                  onClick={() => setConfirmDelete(branch.name)}
                   className="hidden group-hover:block p-1 rounded hover:bg-zinc-800/80 text-zinc-400 hover:text-red-400 transition-all duration-150"
                 >
                   <Trash2 className="w-3 h-3" />
@@ -153,6 +155,29 @@ export function BranchView() {
           </>
         )}
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete Branch"
+          message={`Delete branch "${confirmDelete}"?`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => {
+            const name = confirmDelete;
+            setConfirmDelete(null);
+            void handleDelete(name);
+          }}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {alertError && (
+        <AlertDialog
+          title="Error"
+          message={alertError}
+          onClose={() => setAlertError(null)}
+        />
+      )}
     </div>
   );
 }

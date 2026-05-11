@@ -18,6 +18,8 @@ import { useSettingsStore } from "./stores/settingsStore";
 import type { GitFile } from "./types/git";
 import { connectRepoEvents, disconnectRepoEvents } from "./services/sse";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { ConfirmDialog } from "./components/common/Dialog";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import * as api from "./services/api";
 import { loadRecentRepos } from "./utils/recentRepos";
 
@@ -58,12 +60,14 @@ export default function App() {
   const [branchPanelWidth, setBranchPanelWidth] = useState(() => loadStoredNumber(BRANCH_PANEL_WIDTH_KEY, 384));
   const [commitPanelHeight, setCommitPanelHeight] = useState(() => loadStoredNumber(COMMIT_PANEL_HEIGHT_KEY, 180));
   const [dragState, setDragState] = useState<DragState>(null);
+  const [confirmDiscardPath, setConfirmDiscardPath] = useState<string | null>(null);
 
   useKeyboardShortcuts({
     view,
     onViewChange: setView,
     selectedFile,
     onSelectFile: setSelectedFile,
+    onConfirmDiscard: (path) => setConfirmDiscardPath(path),
   });
 
   useEffect(() => {
@@ -200,6 +204,7 @@ export default function App() {
   }
 
   return (
+    <>
     <MainLayout currentView={view} onViewChange={setView}>
       <div className="h-full flex flex-col bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900/20">
         <header className="h-10 border-b border-zinc-800/60 flex items-center justify-between px-3">
@@ -221,13 +226,13 @@ export default function App() {
                 className="flex-shrink-0 overflow-y-auto border-r border-zinc-800"
                 style={{ width: statusPanelWidth }}
               >
-                <StatusView
+                <ErrorBoundary><StatusView
                   onSelectFile={(file) => {
                     setSelectedFile(file);
                     setView("diff");
                   }}
                   selectedFile={selectedFile}
-                />
+                /></ErrorBoundary>
               </div>
               <ResizeHandle
                 orientation="vertical"
@@ -245,13 +250,13 @@ export default function App() {
                 ) : (
                   <>
                     <div className="min-h-0 flex-1">
-                      <DiffViewer
+                      <ErrorBoundary><DiffViewer
                         repoPath={repoPath}
                         filePath={selectedFile?.path ?? null}
                         showAllWhenNoFile={false}
                         emptyStateMessage="Select a changed file to inspect its diff"
                         refreshKey={lastStatusUpdateAt}
-                      />
+                      /></ErrorBoundary>
                     </div>
                     <ResizeHandle
                       orientation="horizontal"
@@ -267,7 +272,7 @@ export default function App() {
                       className="flex-shrink-0 overflow-y-auto"
                       style={{ height: commitPanelHeight }}
                     >
-                      <CommitPanel onCommitted={() => setSelectedFile(null)} />
+                      <ErrorBoundary><CommitPanel onCommitted={() => setSelectedFile(null)} /></ErrorBoundary>
                     </div>
                   </>
                 )}
@@ -277,11 +282,11 @@ export default function App() {
 
           {view === "diff" && (
             <div className="flex-1">
-              <DiffViewer
+              <ErrorBoundary><DiffViewer
                 repoPath={repoPath}
                 filePath={selectedFile?.path ?? null}
                 refreshKey={lastStatusUpdateAt}
-              />
+              /></ErrorBoundary>
             </div>
           )}
 
@@ -291,7 +296,7 @@ export default function App() {
                 className="flex-shrink-0"
                 style={{ width: branchPanelWidth }}
               >
-                <BranchView />
+                <ErrorBoundary><BranchView /></ErrorBoundary>
               </div>
               <ResizeHandle
                 orientation="vertical"
@@ -316,42 +321,61 @@ export default function App() {
 
           {view === "log" && (
             <div className="flex-1">
-              <LogView />
+              <ErrorBoundary><LogView /></ErrorBoundary>
             </div>
           )}
 
           {view === "stats" && (
             <div className="flex-1">
-              <StatsView onOpenSettings={() => setView("settings")} />
+              <ErrorBoundary><StatsView onOpenSettings={() => setView("settings")} /></ErrorBoundary>
             </div>
           )}
 
           {view === "stashes" && (
             <div className="flex-1">
-              <StashView />
+              <ErrorBoundary><StashView /></ErrorBoundary>
             </div>
           )}
 
           {view === "rebase" && (
             <div className="flex-1">
-              <RebaseView />
+              <ErrorBoundary><RebaseView /></ErrorBoundary>
             </div>
           )}
 
           {view === "settings" && (
             <div className="flex-1">
-              <SettingsView />
+              <ErrorBoundary><SettingsView /></ErrorBoundary>
             </div>
           )}
 
           {view === "explorer" && (
             <div className="flex-1">
-              <ExplorerView />
+              <ErrorBoundary><ExplorerView /></ErrorBoundary>
             </div>
           )}
         </div>
       </div>
     </MainLayout>
+
+    {confirmDiscardPath && (
+      <ConfirmDialog
+        title="Discard Changes"
+        message={`Discard changes to ${confirmDiscardPath}?`}
+        confirmLabel="Discard"
+        danger
+        onConfirm={() => {
+          const path = confirmDiscardPath;
+          setConfirmDiscardPath(null);
+          void api.discardChanges(repoPath!, [path]).then(() => {
+            setSelectedFile(null);
+            useRepoStore.getState().refresh();
+          });
+        }}
+        onCancel={() => setConfirmDiscardPath(null)}
+      />
+    )}
+  </>
   );
 }
 

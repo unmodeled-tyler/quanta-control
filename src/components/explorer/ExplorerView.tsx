@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRepoStore } from "../../stores/repoStore";
+import { ConfirmDialog } from "../common/Dialog";
 import * as api from "../../services/api";
 import type {
   BlameLine,
@@ -91,6 +92,7 @@ export function ExplorerView() {
   const [newTagRef, setNewTagRef] = useState("");
   const [tagCreating, setTagCreating] = useState(false);
   const [deletingTagName, setDeletingTagName] = useState<string | null>(null);
+  const [confirmDeleteTag, setConfirmDeleteTag] = useState<string | null>(null);
 
   // Line history (for blame view)
   const [lineHistoryRange, setLineHistoryRange] = useState<{ start: number; end: number } | null>(null);
@@ -320,7 +322,6 @@ export function ExplorerView() {
 
   const deleteTagAction = async (name: string) => {
     if (!repoPath) return;
-    if (!window.confirm(`Delete tag "${name}"?`)) return;
     setTagError(null);
     setDeletingTagName(name);
     try {
@@ -622,7 +623,7 @@ export function ExplorerView() {
               onNewTagMessageChange={setNewTagMessage}
               onNewTagRefChange={setNewTagRef}
               onCreateTag={createTagAction}
-              onDeleteTag={deleteTagAction}
+              onDeleteTag={(name: string) => setConfirmDeleteTag(name)}
             />
           )}
         </div>
@@ -768,6 +769,21 @@ export function ExplorerView() {
           )}
         </div>
       </div>
+
+      {confirmDeleteTag && (
+        <ConfirmDialog
+          title="Delete Tag"
+          message={`Delete tag "${confirmDeleteTag}"?`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => {
+            const name = confirmDeleteTag;
+            setConfirmDeleteTag(null);
+            void deleteTagAction(name);
+          }}
+          onCancel={() => setConfirmDeleteTag(null)}
+        />
+      )}
     </div>
   );
 }

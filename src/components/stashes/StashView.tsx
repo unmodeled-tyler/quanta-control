@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Package, RotateCcw, Trash2, Download } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
+import { ConfirmDialog } from "../common/Dialog";
 import * as api from "../../services/api";
 import type { StashEntry } from "../../types/git";
 
@@ -9,6 +10,7 @@ export function StashView() {
   const [stashes, setStashes] = useState<StashEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<Set<string>>(new Set());
+  const [confirmDrop, setConfirmDrop] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!repoPath) return;
@@ -112,10 +114,7 @@ export function StashView() {
                   Pop
                 </button>
                 <button
-                  onClick={() => {
-                    if (!confirm(`Drop stash ${stash.name}?`)) return;
-                    void wrap(stash.name, () => api.dropStash(repoPath!, stash.name));
-                  }}
+                  onClick={() => setConfirmDrop(stash.name)}
                   disabled={isBusy}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-600/20 transition-colors disabled:opacity-40"
                   title="Drop stash"
@@ -128,6 +127,21 @@ export function StashView() {
           );
         })}
       </div>
+
+      {confirmDrop && (
+        <ConfirmDialog
+          title="Drop Stash"
+          message={`Drop stash ${confirmDrop}?`}
+          confirmLabel="Drop"
+          danger
+          onConfirm={() => {
+            const name = confirmDrop;
+            setConfirmDrop(null);
+            void wrap(name, () => api.dropStash(repoPath!, name));
+          }}
+          onCancel={() => setConfirmDrop(null)}
+        />
+      )}
     </div>
   );
 }

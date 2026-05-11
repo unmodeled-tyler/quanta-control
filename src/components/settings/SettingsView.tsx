@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useRepoStore } from "../../stores/repoStore";
+import { ConfirmDialog } from "../common/Dialog";
 import * as api from "../../services/api";
 
 export function SettingsView() {
@@ -21,6 +22,7 @@ export function SettingsView() {
   const repoPath = useRepoStore((s) => s.repoPath);
   const [gitConfig, setGitConfig] = useState<{ name: string; email: string } | null>(null);
   const [testingAiEndpoint, setTestingAiEndpoint] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [aiEndpointTestResult, setAiEndpointTestResult] = useState<{
     ok: boolean;
     message: string;
@@ -258,17 +260,27 @@ export function SettingsView() {
 
         <section className="pt-4 border-t border-zinc-800/60">
           <button
-            onClick={() => {
-              if (confirm("Reset all settings to defaults?")) {
-                resetSettings();
-              }
-            }}
+            onClick={() => setConfirmReset(true)}
             className="flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-md transition-all duration-150"
           >
             <RotateCcw className="w-4 h-4" />
             Reset to Defaults
           </button>
         </section>
+
+        {confirmReset && (
+          <ConfirmDialog
+            title="Reset Settings"
+            message="Reset all settings to defaults?"
+            confirmLabel="Reset"
+            danger
+            onConfirm={() => {
+              setConfirmReset(false);
+              resetSettings();
+            }}
+            onCancel={() => setConfirmReset(false)}
+          />
+        )}
       </div>
     </div>
   );

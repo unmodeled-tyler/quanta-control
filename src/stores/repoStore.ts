@@ -48,11 +48,42 @@ export const useRepoStore = create<RepoStore>((set, get) => {
 
     if (showLoading) set({ loading: true, error: null });
     try {
-      await Promise.all([
-        get().refreshStatus(),
-        get().refreshBranches(),
-        get().refreshLog(),
+      const [statusResult, branchesResult, logResult] = await Promise.allSettled([
+        api.getStatus(repoPath),
+        api.getBranches(repoPath),
+        api.getLog(repoPath, 50),
       ]);
+
+      const patch: Partial<RepoStore> = {};
+
+      if (statusResult.status === "fulfilled") {
+        const previousStatus = get().status;
+        const status = statusResult.value;
+        const previousSignature = buildStatusSignature(previousStatus);
+        const nextSignature = buildStatusSignature(status);
+        const hasChanged = previousSignature !== null && previousSignature !== nextSignature;
+
+        patch.status = status;
+        patch.lastStatusUpdateAt = Date.now();
+        if (hasChanged) patch.lastChangeDetectedAt = Date.now();
+      }
+
+      if (branchesResult.status === "fulfilled") {
+        patch.branches = branchesResult.value;
+      }
+
+      if (logResult.status === "fulfilled") {
+        patch.commits = logResult.value;
+      }
+
+      const errors = [statusResult, branchesResult, logResult]
+        .filter((r): r is PromiseRejectedResult => r.status === "rejected")
+        .map((r) => (r.reason instanceof Error ? r.reason.message : String(r.reason)));
+      if (errors.length > 0) {
+        patch.error = errors.join("; ");
+      }
+
+      set(patch);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       set({ error: message });

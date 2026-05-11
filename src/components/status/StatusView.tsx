@@ -13,6 +13,7 @@ import {
 import { useState, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRepoStore } from "../../stores/repoStore";
+import { ConfirmDialog } from "../common/Dialog";
 import * as api from "../../services/api";
 import { ContextMenu, type ContextMenuEntry } from "../common/ContextMenu";
 import type { GitFile } from "../../types/git";
@@ -44,6 +45,7 @@ function FileItem({
     STATUS_CONFIG[file.status] ?? { label: "M", color: "text-yellow-400", bg: "bg-yellow-500/10" };
 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -72,11 +74,7 @@ function FileItem({
     {
       label: "Discard Changes",
       icon: <Trash2 className="w-3.5 h-3.5" />,
-      onClick: () => {
-        if (confirm(`Discard changes to ${file.path}?`)) {
-          api.discardChanges(repoPath, [file.path]).then(onAction);
-        }
-      },
+      onClick: () => setConfirmDiscard(true),
       danger: true,
     },
     { separator: true },
@@ -159,9 +157,7 @@ function FileItem({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              if (confirm(`Discard changes to ${file.path}?`)) {
-                api.discardChanges(repoPath, [file.path]).then(onAction);
-              }
+              setConfirmDiscard(true);
             }}
             className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-red-400"
             title="Discard"
@@ -180,6 +176,20 @@ function FileItem({
           />,
           document.body,
         )}
+
+      {confirmDiscard && (
+        <ConfirmDialog
+          title="Discard Changes"
+          message={`Discard changes to ${file.path}?`}
+          confirmLabel="Discard"
+          danger
+          onConfirm={() => {
+            setConfirmDiscard(false);
+            api.discardChanges(repoPath, [file.path]).then(onAction);
+          }}
+          onCancel={() => setConfirmDiscard(false)}
+        />
+      )}
     </>
   );
 }

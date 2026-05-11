@@ -11,11 +11,13 @@ export function useKeyboardShortcuts({
   onViewChange,
   selectedFile,
   onSelectFile,
+  onConfirmDiscard,
 }: {
   view: View;
   onViewChange: (view: View) => void;
   selectedFile: { path: string } | null;
   onSelectFile: (file: null) => void;
+  onConfirmDiscard: (path: string) => void;
 }) {
   const repoPath = useRepoStore((s) => s.repoPath);
   const status = useRepoStore((s) => s.status);
@@ -31,6 +33,7 @@ export function useKeyboardShortcuts({
     refresh,
     onViewChange,
     onSelectFile,
+    onConfirmDiscard,
   });
 
   useEffect(() => {
@@ -43,6 +46,7 @@ export function useKeyboardShortcuts({
       refresh,
       onViewChange,
       onSelectFile,
+      onConfirmDiscard,
     };
   });
 
@@ -86,7 +90,8 @@ export function useKeyboardShortcuts({
     if (e.key === "d" || e.key === "D") {
       e.preventDefault();
       if (meta.settings.confirmDiscard) {
-        if (!confirm(`Discard changes to ${meta.selectedFile.path}?`)) return;
+        meta.onConfirmDiscard(meta.selectedFile.path);
+        return;
       }
       void api.discardChanges(meta.repoPath!, [meta.selectedFile.path]).then(() => {
         meta.refresh();

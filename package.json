@@ -31,7 +31,7 @@
     "start:cli": "node ./bin/quanta-control.js",
     "preview": "vite preview",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.server.json"
   },
   "dependencies": {
     "chokidar": "^5.0.0",
