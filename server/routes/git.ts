@@ -9,6 +9,11 @@ import { parseStatus, parseDiff, parseLog, parseBranches, parseRemotes, LOG_SEPA
 const router = Router();
 
 const MAX_DIFF_CHARS = 60000;
+const AI_REQUEST_TIMEOUT_MS = 45000;
+
+function createHttpError(status: number, message: string) {
+  return Object.assign(new Error(message), { status });
+}
 
 function chatCompletionsUrlCandidates(endpoint: string) {
   const trimmed = endpoint.trim().replace(/\/+$/, "");
@@ -82,14 +87,31 @@ async function requestChatCompletion(
     if (!url) continue;
     lastUrl = url;
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-      },
-      body: JSON.stringify(payload),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      lastError = message;
+      lastStatus = 502;
+
+      if (index < urls.length - 1) {
+        continue;
+      }
+
+      throw createHttpError(
+        502,
+        `Could not reach AI provider: ${message}. Tried: ${urls.join(", ")}`,
+      );
+    }
 
     const bodyText = await response.text();
     if (response.ok) {
@@ -109,9 +131,7 @@ async function requestChatCompletion(
   }
 
   const attempted = urls.length > 1 ? ` Tried: ${urls.join(", ")}` : ` Tried: ${lastUrl}`;
-  throw Object.assign(new Error(`AI provider error (${lastStatus}): ${lastError}.${attempted}`), {
-    status: 502,
-  });
+  throw createHttpError(502, `AI provider error (${lastStatus}): ${lastError}.${attempted}`);
 }
 
 async function buildCommitMessageContext(repo: string) {
