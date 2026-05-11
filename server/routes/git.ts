@@ -8,8 +8,9 @@ import { parseStatus, parseDiff, parseLog, parseBranches, parseRemotes, LOG_SEPA
 
 const router = Router();
 
-const MAX_DIFF_CHARS = 60000;
-const AI_REQUEST_TIMEOUT_MS = 45000;
+const MAX_DIFF_CHARS = 12000;
+const MAX_DIFF_LINES_PER_FILE = 80;
+const AI_REQUEST_TIMEOUT_MS = 90000;
 
 function createHttpError(status: number, message: string) {
   return Object.assign(new Error(message), { status });
@@ -84,6 +85,42 @@ function modelsUrlCandidates(endpoint: string) {
 function compactOutput(value: string, maxChars = MAX_DIFF_CHARS) {
   if (value.length <= maxChars) return value;
   return `${value.slice(0, maxChars)}\n\n[Diff truncated for length]`;
+}
+
+function summarizeDiffForCommitMessage(diffOutput: string) {
+  const blocks = diffOutput.split(/(?=^diff --git )/m).filter(Boolean);
+  if (blocks.length === 0) return "(no tracked-file diff)";
+
+  const summaries = blocks.map((block) => {
+    const pathMatch = block.match(/^diff --git a\/(.+?) b\/(.+?)$/m);
+    const path = pathMatch?.[2] || pathMatch?.[1] || "(unknown file)";
+    if (block.includes("Binary files")) {
+      return [`File: ${path}`, "Binary file changed"].join("\n");
+    }
+
+    const changedLines: string[] = [];
+    for (const line of block.split("\n")) {
+      if (line.startsWith("@@")) {
+        changedLines.push(line);
+        continue;
+      }
+      if (line.startsWith("+++") || line.startsWith("---")) continue;
+      if (line.startsWith("+") || line.startsWith("-")) {
+        changedLines.push(line);
+      }
+      if (changedLines.length >= MAX_DIFF_LINES_PER_FILE) {
+        changedLines.push("[file diff truncated]");
+        break;
+      }
+    }
+
+    return [
+      `File: ${path}`,
+      changedLines.length ? changedLines.join("\n") : "(metadata-only change)",
+    ].join("\n");
+  });
+
+  return compactOutput(summaries.join("\n\n"));
 }
 
 function cleanGeneratedCommitMessage(value: string) {
@@ -317,8 +354,8 @@ async function buildCommitMessageContext(repo: string) {
     "Untracked files:",
     untracked.stdout.trim() || "(none)",
     "",
-    "Diff:",
-    compactOutput(diff.stdout.trim() || "(no tracked-file diff)"),
+    "Selected diff summary:",
+    summarizeDiffForCommitMessage(diff.stdout),
   ].join("\n");
 }
 
