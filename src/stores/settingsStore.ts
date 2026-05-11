@@ -12,6 +12,10 @@ export interface AppSettings {
   confirmDiscard: boolean;
   confirmPush: boolean;
   autoPushOnCommit: boolean;
+  aiCommitMessagesEnabled: boolean;
+  aiCommitEndpoint: string;
+  aiCommitModel: string;
+  aiCommitApiKey: string;
 }
 
 const DEFAULTS: AppSettings = {
@@ -26,6 +30,10 @@ const DEFAULTS: AppSettings = {
   confirmDiscard: true,
   confirmPush: true,
   autoPushOnCommit: false,
+  aiCommitMessagesEnabled: false,
+  aiCommitEndpoint: "https://api.openai.com/v1",
+  aiCommitModel: "gpt-4.1-mini",
+  aiCommitApiKey: "",
 };
 
 function loadSettings(): AppSettings {

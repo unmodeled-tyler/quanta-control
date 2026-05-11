@@ -94,6 +94,20 @@ export function commit(repo: string, message: string, amend = false) {
   });
 }
 
+export function generateCommitMessage(
+  repo: string,
+  options: {
+    endpoint: string;
+    model: string;
+    apiKey?: string;
+  },
+) {
+  return api<{ message: string }>(`${GIT_BASE}/generate-commit-message`, {
+    method: "POST",
+    body: JSON.stringify({ repo, ...options }),
+  });
+}
+
 export function getLog(repo: string, count = 50, branch?: string) {
   const params = new URLSearchParams({ repo, count: String(count) });
   if (branch) params.set("branch", branch);

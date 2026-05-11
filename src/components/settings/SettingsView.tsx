@@ -8,6 +8,7 @@ import {
   Shield,
   RotateCcw,
   FolderOpen,
+  Bot,
 } from "lucide-react";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useRepoStore } from "../../stores/repoStore";
@@ -163,6 +164,37 @@ export function SettingsView() {
           </div>
         </section>
 
+        <section>
+          <SectionHeader icon={<Bot className="w-4 h-4" />} title="AI Commit Messages" />
+          <div className="space-y-3 mt-3">
+            <Toggle
+              label="Enable AI commit button"
+              description="Show a commit-message generator in the commit panel"
+              checked={settings.aiCommitMessagesEnabled}
+              onChange={(v) => updateSetting("aiCommitMessagesEnabled", v)}
+            />
+            <TextInput
+              label="OpenAI-compatible endpoint"
+              value={settings.aiCommitEndpoint}
+              onChange={(v) => updateSetting("aiCommitEndpoint", v)}
+              placeholder="https://api.openai.com/v1"
+            />
+            <TextInput
+              label="Model"
+              value={settings.aiCommitModel}
+              onChange={(v) => updateSetting("aiCommitModel", v)}
+              placeholder="gpt-4.1-mini"
+            />
+            <TextInput
+              label="API key"
+              value={settings.aiCommitApiKey}
+              onChange={(v) => updateSetting("aiCommitApiKey", v)}
+              placeholder="Optional for local endpoints"
+              type="password"
+            />
+          </div>
+        </section>
+
         <section className="pt-4 border-t border-zinc-800/60">
           <button
             onClick={() => {
@@ -228,17 +260,19 @@ function TextInput({
   value,
   onChange,
   placeholder,
+  type = "text",
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  type?: string;
 }) {
   return (
     <div>
       <label className="text-sm text-zinc-300 block mb-1">{label}</label>
       <input
-        type="text"
+        type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

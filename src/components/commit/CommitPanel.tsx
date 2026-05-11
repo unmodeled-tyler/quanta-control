@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { GitCommit, Upload, Check } from "lucide-react";
+import { GitCommit, Upload, Check, WandSparkles } from "lucide-react";
 import { useRepoStore } from "../../stores/repoStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import * as api from "../../services/api";
@@ -10,6 +10,8 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
   const { settings, updateSetting } = useSettingsStore();
   const [message, setMessage] = useState("");
   const [committing, setCommitting] = useState(false);
+  const [generatingMessage, setGeneratingMessage] = useState(false);
+  const [generationError, setGenerationError] = useState("");
   const [pushDialog, setPushDialog] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [dontAskAgain, setDontAskAgain] = useState(false);
@@ -69,6 +71,32 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
     }
   };
 
+  const handleGenerateMessage = async () => {
+    if (!repoPath || !hasChanges || generatingMessage) return;
+
+    const endpoint = settings.aiCommitEndpoint.trim();
+    const model = settings.aiCommitModel.trim();
+    if (!endpoint || !model) {
+      setGenerationError("Configure an AI endpoint and model in Settings.");
+      return;
+    }
+
+    setGeneratingMessage(true);
+    setGenerationError("");
+    try {
+      const result = await api.generateCommitMessage(repoPath, {
+        endpoint,
+        model,
+        apiKey: settings.aiCommitApiKey.trim() || undefined,
+      });
+      setMessage(result.message.trim());
+    } catch (err) {
+      setGenerationError(err instanceof Error ? err.message : "Could not generate commit message.");
+    } finally {
+      setGeneratingMessage(false);
+    }
+  };
+
   const handlePushDialogYes = () => {
     if (dontAskAgain) {
       updateSetting("autoPushOnCommit", true);
@@ -95,6 +123,17 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
           }}
         />
         <div className="flex items-center gap-2 mt-2">
+          {settings.aiCommitMessagesEnabled && (
+            <button
+              onClick={handleGenerateMessage}
+              disabled={!hasChanges || generatingMessage}
+              title="Generate commit message"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 disabled:hover:bg-zinc-800 border border-zinc-700/80 rounded-md text-sm font-medium transition-all duration-150 ease-out"
+            >
+              <WandSparkles className={`w-3.5 h-3.5 ${generatingMessage ? "animate-pulse" : ""}`} />
+              {generatingMessage ? "Generating" : "AI Message"}
+            </button>
+          )}
           <button
             onClick={handleCommit}
             disabled={!message.trim() || !hasChanges || committing}
@@ -115,6 +154,9 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
               : "Enter to stage and commit all changes"}
           </span>
         </div>
+        {generationError && (
+          <div className="mt-2 text-xs text-red-400">{generationError}</div>
+        )}
       </div>
 
       {pushDialog &&
