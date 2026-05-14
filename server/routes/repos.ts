@@ -22,6 +22,9 @@ router.get("/validate", async (req, res, next) => {
 router.get("/browse", async (req, res, next) => {
   try {
     const rawPath = (req.query.path as string) || "~";
+    if (rawPath.split(/[\\/]+/).some((s) => s === "..")) {
+      return res.status(400).json({ error: "Invalid path" });
+    }
     const dir = expandPath(rawPath);
 
     try {

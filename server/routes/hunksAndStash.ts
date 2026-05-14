@@ -1,17 +1,10 @@
 import { Router } from "express";
 import { gitInRepo, git } from "../services/gitExecutor.js";
+import { validateGitRepo, assertSafeRef } from "../utils/validation.js";
 
 const router = Router();
 
-function createHttpError(status: number, message: string) {
-  return Object.assign(new Error(message), { status });
-}
 
-function assertSafeRef(value: string, label: string) {
-  if (value.startsWith("-")) {
-    throw createHttpError(400, `${label} must not start with "-"`);
-  }
-}
 
 router.post("/apply-hunk", async (req, res, next) => {
   try {
@@ -19,6 +12,7 @@ router.post("/apply-hunk", async (req, res, next) => {
     if (!repo || !file || !hunk) {
       return res.status(400).json({ error: "repo, file, and hunk required" });
     }
+    const resolvedRepo = await validateGitRepo(repo);
 
     const headerLines: string[] = [];
     headerLines.push(`diff --git a/${oldFile ?? file} b/${newFile ?? file}`);
@@ -41,7 +35,7 @@ router.post("/apply-hunk", async (req, res, next) => {
     const patch = headerLines.join("\n");
 
     const args = reverse ? ["apply", "-R", "--cached"] : ["apply", "--cached"];
-    const result = await git(args, { cwd: repo, input: patch });
+    const result = await git(args, { cwd: resolvedRepo, input: patch });
 
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
@@ -56,8 +50,9 @@ router.get("/stashes", async (req, res, next) => {
   try {
     const repo = req.query.repo as string;
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, ["stash", "list", "--format=%gd|%H|%h|%ci|%gs"]);
+    const result = await gitInRepo(resolvedRepo, ["stash", "list", "--format=%gd|%H|%h|%ci|%gs"]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -90,8 +85,9 @@ router.post("/stash-apply", async (req, res, next) => {
     const { repo, name } = req.body;
     if (!repo || !name) return res.status(400).json({ error: "repo and stash name required" });
     assertSafeRef(name, "stash name");
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, ["stash", "apply", name]);
+    const result = await gitInRepo(resolvedRepo, ["stash", "apply", "--", name]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -106,8 +102,9 @@ router.post("/stash-pop", async (req, res, next) => {
     const { repo, name } = req.body;
     if (!repo || !name) return res.status(400).json({ error: "repo and stash name required" });
     assertSafeRef(name, "stash name");
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, ["stash", "pop", name]);
+    const result = await gitInRepo(resolvedRepo, ["stash", "pop", "--", name]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -122,8 +119,9 @@ router.post("/stash-drop", async (req, res, next) => {
     const { repo, name } = req.body;
     if (!repo || !name) return res.status(400).json({ error: "repo and stash name required" });
     assertSafeRef(name, "stash name");
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, ["stash", "drop", name]);
+    const result = await gitInRepo(resolvedRepo, ["stash", "drop", "--", name]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }

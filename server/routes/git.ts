@@ -4,39 +4,32 @@ import { join } from "path";
 import { tmpdir } from "os";
 import { randomUUID } from "crypto";
 import { gitInRepo, expandPath } from "../services/gitExecutor.js";
+import { validateGitRepo, assertSafeRef, assertSafeArray } from "../utils/validation.js";
+import { cachedGitCall } from "../utils/simpleCache.js";
 import { parseStatus, parseDiff, parseLog, parseBranches, parseRemotes, LOG_SEPARATOR } from "../services/gitParser.js";
 
 const router = Router();
 
-function createHttpError(status: number, message: string) {
-  return Object.assign(new Error(message), { status });
-}
 
-function assertSafeRef(value: string, label: string) {
-  if (value.startsWith("-")) {
-    throw createHttpError(400, `${label} must not start with "-"`);
-  }
-}
 
 router.get("/status", async (req, res, next) => {
   try {
     const repoPath = req.query.repo as string;
     if (!repoPath) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repoPath);
 
-    const result = await gitInRepo(repoPath, [
-      "status", "--porcelain", "--branch",
-    ]);
+    const result = await cachedGitCall(`status:${resolvedRepo}`, () =>
+      gitInRepo(resolvedRepo, ["status", "--porcelain", "--branch"]),
+    );
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
 
     const status = parseStatus(result.stdout);
 
-    const numstatUnstaged = await gitInRepo(repoPath, [
-      "diff", "--numstat", "--no-color",
-    ]);
-    const numstatStaged = await gitInRepo(repoPath, [
-      "diff", "--cached", "--numstat", "--no-color",
+    const [numstatUnstaged, numstatStaged] = await Promise.all([
+      gitInRepo(resolvedRepo, ["diff", "--no-color", "--numstat"]),
+      gitInRepo(resolvedRepo, ["diff", "--cached", "--no-color", "--numstat"]),
     ]);
 
     const stats = new Map<string, { additions: number; deletions: number }>();
@@ -77,13 +70,13 @@ router.get("/diff", async (req, res, next) => {
     const file = req.query.file as string;
     const staged = req.query.staged as string;
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const args = ["diff"];
+    const args = ["diff", "--no-color"];
     if (staged === "true") args.push("--cached");
     if (file) args.push("--", file);
-    args.push("--no-color");
 
-    const result = await gitInRepo(repo, args);
+    const result = await gitInRepo(resolvedRepo, args);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -101,11 +94,14 @@ router.get("/commit-diff", async (req, res, next) => {
     const commit = req.query.commit as string;
     if (!repo) return res.status(400).json({ error: "repo path required" });
     if (!commit) return res.status(400).json({ error: "commit hash required" });
+    assertSafeRef(commit, "commit hash");
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, [
+    const result = await gitInRepo(resolvedRepo, [
       "show",
       "--format=",
       "--no-color",
+      "--",
       commit,
     ]);
     if (result.exitCode !== 0) {
@@ -123,9 +119,10 @@ router.post("/stage", async (req, res, next) => {
   try {
     const { repo, files } = req.body;
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const filesArg = files?.length ? files : ["."];
-    const result = await gitInRepo(repo, ["add", "--", ...filesArg]);
+    const filesArg = assertSafeArray(files ?? ["."], "files");
+    const result = await gitInRepo(resolvedRepo, ["add", "--", ...(filesArg.length ? filesArg : ["."])]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -139,9 +136,10 @@ router.post("/unstage", async (req, res, next) => {
   try {
     const { repo, files } = req.body;
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const filesArg = files?.length ? files : ["."];
-    const result = await gitInRepo(repo, ["reset", "HEAD", "--", ...filesArg]);
+    const filesArg = assertSafeArray(files ?? ["."], "files");
+    const result = await gitInRepo(resolvedRepo, ["reset", "HEAD", "--", ...(filesArg.length ? filesArg : ["."])]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -157,11 +155,12 @@ router.post("/commit", async (req, res, next) => {
     if (!repo || !message) {
       return res.status(400).json({ error: "repo and message required" });
     }
+    const resolvedRepo = await validateGitRepo(repo);
 
     const args = ["commit", "-m", message];
     if (amend) args.push("--amend", "--no-edit");
 
-    const result = await gitInRepo(repo, args);
+    const result = await gitInRepo(resolvedRepo, args);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -178,12 +177,15 @@ router.get("/log", async (req, res, next) => {
     const branch = req.query.branch as string;
 
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
     const format = `%H%n%h%n%an%n%ae%n%aI%n%P%n%D%n%s%n${LOG_SEPARATOR}`;
     const args = ["log", `--max-count=${count}`, `--format=${format}`];
-    if (branch) args.push(branch);
+    if (branch) { assertSafeRef(branch, "branch name"); args.push("--", branch); }
 
-    const result = await gitInRepo(repo, args);
+    const result = await cachedGitCall(`log:${resolvedRepo}:${count}:${branch || ""}`, () =>
+      gitInRepo(resolvedRepo, args),
+    );
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -374,9 +376,10 @@ router.post("/delete-branch", async (req, res, next) => {
       return res.status(400).json({ error: "repo and branch required" });
     }
     assertSafeRef(branch, "branch name");
+    const resolvedRepo = await validateGitRepo(repo);
 
     const flag = force ? "-D" : "-d";
-    const result = await gitInRepo(repo, ["branch", flag, "--", branch]);
+    const result = await gitInRepo(resolvedRepo, ["branch", flag, "--", branch]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -390,8 +393,11 @@ router.get("/remotes", async (req, res, next) => {
   try {
     const repo = req.query.repo as string;
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, ["remote", "-v"]);
+    const result = await cachedGitCall(`remotes:${resolvedRepo}`, () =>
+      gitInRepo(resolvedRepo, ["remote", "-v"]),
+    );
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -425,6 +431,7 @@ router.post("/pull", async (req, res, next) => {
   try {
     const { repo, remote, branch } = req.body;
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
     const args = ["pull"];
     if (remote) {
@@ -433,10 +440,10 @@ router.post("/pull", async (req, res, next) => {
     }
     if (branch) {
       assertSafeRef(branch, "branch name");
-      args.push(branch);
+      args.push("--", branch);
     }
 
-    const result = await gitInRepo(repo, args);
+    const result = await gitInRepo(resolvedRepo, args);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -450,19 +457,20 @@ router.post("/push", async (req, res, next) => {
   try {
     const { repo, remote, branch, force } = req.body;
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
     const args = ["push"];
     if (force) args.push("--force-with-lease");
     if (remote) {
       assertSafeRef(remote, "remote name");
-      args.push(remote);
+      args.push("--", remote);
     }
     if (branch) {
       assertSafeRef(branch, "branch name");
-      args.push(branch);
+      args.push("--", branch);
     }
 
-    const result = await gitInRepo(repo, args);
+    const result = await gitInRepo(resolvedRepo, args);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -610,6 +618,8 @@ router.post("/rebase-interactive", async (req, res, next) => {
     if (!repo) return res.status(400).json({ error: "repo path required" });
     if (!baseCommit) return res.status(400).json({ error: "base commit required" });
     if (!todos?.length) return res.status(400).json({ error: "todo list required" });
+    assertSafeRef(baseCommit, "base commit");
+    const resolvedRepo = await validateGitRepo(repo);
 
     const workDir = join(tmpdir(), `quanta-rebase-${randomUUID()}`);
     await mkdir(workDir, { recursive: true });
@@ -625,7 +635,8 @@ router.post("/rebase-interactive", async (req, res, next) => {
 
       const rewordsToHandle = todos.filter((entry: { action: string; hash: string; message: string }) => entry.action === "reword");
       const env: Record<string, string> = {};
-      env.GIT_SEQUENCE_EDITOR = `cp '${todoPath}'`;
+      const safeTodoPath = todoPath.replace(/'/g, "'\\\''");
+      env.GIT_SEQUENCE_EDITOR = `cp '${safeTodoPath}'`;
 
       if (rewordsToHandle.length > 0 && rewordMessages) {
         const rewordDir = join(workDir, "rewords");
@@ -650,11 +661,11 @@ router.post("/rebase-interactive", async (req, res, next) => {
         env.GIT_EDITOR = editorScriptPath;
       }
 
-      const result = await gitInRepo(repo, ["rebase", "--interactive", baseCommit], env);
+      const result = await gitInRepo(resolvedRepo, ["rebase", "--interactive", "--", baseCommit], env);
 
       if (result.exitCode !== 0) {
         const hasConflicts = result.stderr.includes("CONFLICT") || result.stderr.includes("could not apply");
-        await gitInRepo(repo, ["rebase", "--abort"]).catch((err) => {
+        await gitInRepo(resolvedRepo, ["rebase", "--abort"]).catch((err) => {
           console.warn("[quanta-control] Failed to abort rebase:", err);
         });
 
@@ -678,8 +689,9 @@ router.post("/rebase-abort", async (req, res, next) => {
   try {
     const { repo } = req.body;
     if (!repo) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, ["rebase", "--abort"]);
+    const result = await gitInRepo(resolvedRepo, ["rebase", "--abort"]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -695,11 +707,14 @@ router.get("/tags", async (req, res, next) => {
   try {
     const repoPath = req.query.repo as string;
     if (!repoPath) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repoPath);
 
-    const result = await gitInRepo(repoPath, [
-      "tag", "--list", "--format=%(refname:short)|%(objectname:short)|%(objectname)|%(subject)|%(taggername)",
-      "--sort=-creatordate",
-    ]);
+    const result = await cachedGitCall(`tags:${resolvedRepo}`, () =>
+      gitInRepo(resolvedRepo, [
+        "tag", "--list", "--format=%(refname:short)|%(objectname:short)|%(objectname)|%(subject)|%(taggername)",
+        "--sort=-creatordate",
+      ]),
+    );
 
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
@@ -730,13 +745,14 @@ router.post("/tag-create", async (req, res, next) => {
     const { repo, name, message, ref } = req.body;
     if (!repo || !name) return res.status(400).json({ error: "repo and name required" });
     assertSafeRef(name, "tag name");
+    const resolvedRepo = await validateGitRepo(repo);
 
     const args = ["tag"];
     if (message) args.push("-a", "-m", message);
-    args.push(name);
-    if (ref) args.push(ref);
+    args.push("--", name);
+    if (ref) { assertSafeRef(ref, "ref"); args.push("--", ref); }
 
-    const result = await gitInRepo(repo, args);
+    const result = await gitInRepo(resolvedRepo, args);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -752,8 +768,9 @@ router.post("/tag-delete", async (req, res, next) => {
     const { repo, name } = req.body;
     if (!repo || !name) return res.status(400).json({ error: "repo and name required" });
     assertSafeRef(name, "tag name");
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, ["tag", "-d", "--", name]);
+    const result = await gitInRepo(resolvedRepo, ["tag", "-d", "--", name]);
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
     }
@@ -771,8 +788,9 @@ router.post("/cherry-pick", async (req, res, next) => {
     const { repo, commit } = req.body;
     if (!repo || !commit) return res.status(400).json({ error: "repo and commit required" });
     assertSafeRef(commit, "commit hash");
+    const resolvedRepo = await validateGitRepo(repo);
 
-    const result = await gitInRepo(repo, ["cherry-pick", commit]);
+    const result = await gitInRepo(resolvedRepo, ["cherry-pick", "--", commit]);
     if (result.exitCode !== 0) {
       // Auto-abort on conflict so we don't leave the repo in a bad state
       await gitInRepo(repo, ["cherry-pick", "--abort"]).catch((err) => {

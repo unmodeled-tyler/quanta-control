@@ -66,8 +66,13 @@ export function createApp() {
     return next(Object.assign(new Error("Unauthorized"), { status: 401 }));
   });
 
-  app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, token: authToken });
+  function isLocalRequest(req: express.Request): boolean {
+    const remote = req.socket.remoteAddress;
+    return !remote || remote === "127.0.0.1" || remote === "::1" || remote === "::ffff:127.0.0.1";
+  }
+
+  app.get("/api/health", (req, res) => {
+    res.json({ ok: true, ...(isLocalRequest(req) ? { token: authToken } : {}) });
   });
 
   app.use("/api/git", gitRoutes);
@@ -75,7 +80,27 @@ export function createApp() {
   app.use("/api/system", systemRoutes);
   app.use("/api", featureRoutes);
   app.use("/api/explorer", explorerRoutes);
-  app.use("/api/ai", aiRoutes);
+  
+// Simple in-memory rate limiter for AI endpoints
+const RATE_LIMITS = new Map<string, { count: number; resetAt: number }>();
+const RATE_WINDOW_MS = 60_000;
+const RATE_MAX = 10;
+
+function aiRateLimit(req: express.Request, _res: express.Response, next: express.NextFunction) {
+  const key = req.ip || "unknown";
+  const now = Date.now();
+  const current = RATE_LIMITS.get(key);
+  if (!current || now > current.resetAt) {
+    RATE_LIMITS.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return next();
+  }
+  if (current.count >= RATE_MAX) {
+    return next(Object.assign(new Error("Too many AI requests"), { status: 429 }));
+  }
+  current.count++;
+  next();
+}
+app.use("/api/ai", aiRateLimit, aiRoutes);
 
   if (existsSync(clientDist)) {
     app.use(express.static(clientDist));

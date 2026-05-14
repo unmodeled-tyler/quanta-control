@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { gitInRepo } from "../services/gitExecutor.js";
+import { validateGitRepo, assertSafeRef } from "../utils/validation.js";
+import { cachedGitCall } from "../utils/simpleCache.js";
 import { parseLog, parseDiff } from "../services/gitParser.js";
 import type { BlameLine } from "../../src/types/git.js";
 import { parseBoundedLimit, parseGitLineMatches } from "../utils/gitRouteHelpers.js";
@@ -14,12 +16,15 @@ router.get("/tree", async (req, res, next) => {
   try {
     const repoPath = req.query.repo as string;
     if (!repoPath) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repoPath);
 
     const ref = (req.query.ref as string) || "HEAD";
 
-    const result = await gitInRepo(repoPath, [
-      "ls-tree", "-r", "--name-only", ref,
-    ]);
+    const result = await cachedGitCall(`tree:${resolvedRepo}:${ref}`, () =>
+      gitInRepo(resolvedRepo, [
+        "ls-tree", "-r", "--name-only", "--", ref,
+      ]),
+    );
 
     if (result.exitCode !== 0) {
       return res.status(500).json({ error: result.stderr });
@@ -45,8 +50,9 @@ router.get("/blame", async (req, res, next) => {
     if (!repoPath || !file) {
       return res.status(400).json({ error: "repo and file required" });
     }
+    const resolvedRepo = await validateGitRepo(repoPath);
 
-    const result = await gitInRepo(repoPath, [
+    const result = await gitInRepo(resolvedRepo, [
       "blame", "--porcelain", "--", file,
     ]);
 
@@ -118,10 +124,11 @@ router.get("/history", async (req, res, next) => {
     if (!repoPath || !file) {
       return res.status(400).json({ error: "repo and file required" });
     }
+    const resolvedRepo = await validateGitRepo(repoPath);
 
     const limit = parseBoundedLimit(req.query.limit);
 
-    const result = await gitInRepo(repoPath, [
+    const result = await gitInRepo(resolvedRepo, [
       "log",
       LOG_FORMAT,
       "--date=iso-strict",
@@ -151,6 +158,7 @@ router.get("/grep", async (req, res, next) => {
     if (!repoPath || !pattern) {
       return res.status(400).json({ error: "repo and pattern required" });
     }
+    const resolvedRepo = await validateGitRepo(repoPath);
 
     const caseInsensitive = req.query.ignoreCase !== "false";
 
@@ -158,7 +166,7 @@ router.get("/grep", async (req, res, next) => {
     if (caseInsensitive) args.push("-i");
     args.push(pattern);
 
-    const result = await gitInRepo(repoPath, args);
+    const result = await gitInRepo(resolvedRepo, args);
 
     if (result.exitCode === 1) {
       // git grep exits 1 when no matches found — that's not an error
@@ -188,11 +196,15 @@ router.get("/pickaxe", async (req, res, next) => {
     if (!repoPath || !query) {
       return res.status(400).json({ error: "repo and query required" });
     }
+    if (query.startsWith("-")) {
+      return res.status(400).json({ error: "query must not start with dash" });
+    }
+    const resolvedRepo = await validateGitRepo(repoPath);
 
     const limit = parseBoundedLimit(req.query.limit);
     const flag = mode === "G" ? "-G" : "-S";
 
-    const result = await gitInRepo(repoPath, [
+    const result = await gitInRepo(resolvedRepo, [
       "log",
       LOG_FORMAT,
       "--date=iso-strict",
@@ -221,9 +233,12 @@ router.get("/compare", async (req, res, next) => {
     if (!repoPath || !from || !to) {
       return res.status(400).json({ error: "repo, from, and to required" });
     }
+    assertSafeRef(from, "from ref");
+    assertSafeRef(to, "to ref");
+    const resolvedRepo = await validateGitRepo(repoPath);
 
-    const result = await gitInRepo(repoPath, [
-      "diff", `${from}..${to}`,
+    const result = await gitInRepo(resolvedRepo, [
+      "diff", "--", `${from}..${to}`,
     ]);
 
     if (result.exitCode !== 0) {
@@ -256,11 +271,12 @@ router.get("/line-history", async (req, res, next) => {
     ) {
       return res.status(400).json({ error: "repo, file, and a valid line range required" });
     }
+    const resolvedRepo = await validateGitRepo(repoPath);
 
     const range = `${start},${end}:${file}`;
     const limit = parseBoundedLimit(req.query.limit);
 
-    const result = await gitInRepo(repoPath, [
+    const result = await gitInRepo(resolvedRepo, [
       "log",
       LOG_FORMAT,
       "--date=iso-strict",
@@ -285,10 +301,11 @@ router.get("/todos", async (req, res, next) => {
   try {
     const repoPath = req.query.repo as string;
     if (!repoPath) return res.status(400).json({ error: "repo path required" });
+    const resolvedRepo = await validateGitRepo(repoPath);
 
     const pattern = "(TODO|FIXME|HACK|XXX|OPTIMIZE|BUG|REVIEW)";
 
-    const result = await gitInRepo(repoPath, [
+    const result = await gitInRepo(resolvedRepo, [
       "grep", "-n", "-i", "-E", pattern,
     ]);
 
