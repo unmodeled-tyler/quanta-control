@@ -14,6 +14,7 @@ import { StatsView } from "./components/stats/StatsView";
 import { StashView } from "./components/stashes/StashView";
 import { RebaseView } from "./components/rebase/RebaseView";
 import { ExplorerView } from "./components/explorer/ExplorerView";
+import { GraphView } from "./components/graph/GraphView";
 import { useSettingsStore } from "./stores/settingsStore";
 import type { GitFile } from "./types/git";
 import { connectRepoEvents, disconnectRepoEvents } from "./services/sse";
@@ -56,6 +57,7 @@ export default function App() {
   const settings = useSettingsStore((s) => s.settings);
   const [view, setView] = useState<View>("status");
   const [selectedFile, setSelectedFile] = useState<GitFile | null>(null);
+  const [explorerInitialFilePath, setExplorerInitialFilePath] = useState<string | null>(null);
   const [statusPanelWidth, setStatusPanelWidth] = useState(() => loadStoredNumber(STATUS_PANEL_WIDTH_KEY, 320));
   const [branchPanelWidth, setBranchPanelWidth] = useState(() => loadStoredNumber(BRANCH_PANEL_WIDTH_KEY, 384));
   const [commitPanelHeight, setCommitPanelHeight] = useState(() => loadStoredNumber(COMMIT_PANEL_HEIGHT_KEY, 180));
@@ -319,7 +321,17 @@ export default function App() {
           {view === "stashes" && <FlatView><StashView /></FlatView>}
           {view === "rebase" && <FlatView><RebaseView /></FlatView>}
           {view === "settings" && <FlatView><SettingsView /></FlatView>}
-          {view === "explorer" && <FlatView><ExplorerView /></FlatView>}
+          {view === "explorer" && <FlatView><ExplorerView initialFilePath={explorerInitialFilePath} /></FlatView>}
+          {view === "graph" && (
+            <FlatView>
+              <GraphView
+                onNavigate={(path) => {
+                  setExplorerInitialFilePath(path);
+                  setView("explorer");
+                }}
+              />
+            </FlatView>
+          )}
         </div>
       </div>
     </MainLayout>

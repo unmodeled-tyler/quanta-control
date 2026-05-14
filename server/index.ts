@@ -9,6 +9,7 @@ import repoRoutes from "./routes/repos.js";
 import systemRoutes from "./routes/system.js";
 import { featureRoutes } from "./routes/hunksAndStash.js";
 import explorerRoutes from "./routes/explorer.js";
+import graphRoutes from "./routes/graph.js";
 import aiRoutes from "./routes/ai.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
@@ -80,7 +81,8 @@ export function createApp() {
   app.use("/api/system", systemRoutes);
   app.use("/api", featureRoutes);
   app.use("/api/explorer", explorerRoutes);
-  
+  app.use("/api/graph", graphRoutes);
+
 // Simple in-memory rate limiter for AI endpoints
 const RATE_LIMITS = new Map<string, { count: number; resetAt: number }>();
 const RATE_WINDOW_MS = 60_000;

@@ -395,3 +395,11 @@ export function cherryPick(repo: string, commit: string) {
     body: JSON.stringify({ repo, commit }),
   });
 }
+
+// ── Graph ──
+
+export function getDependencyGraph(repo: string) {
+  return api<{ nodes: import("../types/graph").GraphNode[]; edges: import("../types/graph").GraphEdge[]; groups: string[] }>(
+    `/api/graph/dependencies?repo=${encodeURIComponent(repo)}`
+  );
+}
