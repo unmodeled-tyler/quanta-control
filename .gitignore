@@ -9,7 +9,10 @@ build/
 npm-debug.log*
 .codex
 .kilo/
-.claude
+.claude/
+.agents/
+AGENTS.md
+CLAUDE.md
 .venv/
 test-results/.last-run.json
 package-lock.json
