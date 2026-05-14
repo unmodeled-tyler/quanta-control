@@ -281,21 +281,16 @@ export default function App() {
           )}
 
           {view === "diff" && (
-            <div className="flex-1">
-              <ErrorBoundary><DiffViewer
-                repoPath={repoPath}
-                filePath={selectedFile?.path ?? null}
-                refreshKey={lastStatusUpdateAt}
-              /></ErrorBoundary>
-            </div>
+            <FlatView><DiffViewer
+              repoPath={repoPath}
+              filePath={selectedFile?.path ?? null}
+              refreshKey={lastStatusUpdateAt}
+            /></FlatView>
           )}
 
           {view === "branches" && (
             <>
-              <div
-                className="flex-shrink-0"
-                style={{ width: branchPanelWidth }}
-              >
+              <div className="flex-shrink-0" style={{ width: branchPanelWidth }}>
                 <ErrorBoundary><BranchView /></ErrorBoundary>
               </div>
               <ResizeHandle
@@ -319,41 +314,12 @@ export default function App() {
             </>
           )}
 
-          {view === "log" && (
-            <div className="flex-1">
-              <ErrorBoundary><LogView /></ErrorBoundary>
-            </div>
-          )}
-
-          {view === "stats" && (
-            <div className="flex-1">
-              <ErrorBoundary><StatsView onOpenSettings={() => setView("settings")} /></ErrorBoundary>
-            </div>
-          )}
-
-          {view === "stashes" && (
-            <div className="flex-1">
-              <ErrorBoundary><StashView /></ErrorBoundary>
-            </div>
-          )}
-
-          {view === "rebase" && (
-            <div className="flex-1">
-              <ErrorBoundary><RebaseView /></ErrorBoundary>
-            </div>
-          )}
-
-          {view === "settings" && (
-            <div className="flex-1">
-              <ErrorBoundary><SettingsView /></ErrorBoundary>
-            </div>
-          )}
-
-          {view === "explorer" && (
-            <div className="flex-1">
-              <ErrorBoundary><ExplorerView /></ErrorBoundary>
-            </div>
-          )}
+          {view === "log" && <FlatView><LogView /></FlatView>}
+          {view === "stats" && <FlatView><StatsView onOpenSettings={() => setView("settings")} /></FlatView>}
+          {view === "stashes" && <FlatView><StashView /></FlatView>}
+          {view === "rebase" && <FlatView><RebaseView /></FlatView>}
+          {view === "settings" && <FlatView><SettingsView /></FlatView>}
+          {view === "explorer" && <FlatView><ExplorerView /></FlatView>}
         </div>
       </div>
     </MainLayout>
@@ -415,6 +381,14 @@ function CleanWorkspace() {
           No local changes to review right now. This view will repopulate when new edits land.
         </div>
       </div>
+    </div>
+  );
+}
+
+function FlatView({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex-1">
+      <ErrorBoundary>{children}</ErrorBoundary>
     </div>
   );
 }

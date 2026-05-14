@@ -42,10 +42,13 @@ interface RepoStore {
 }
 
 export const useRepoStore = create<RepoStore>((set, get) => {
+  let syncInFlight = false;
+
   async function syncRepo(showLoading: boolean) {
     const { repoPath } = get();
-    if (!repoPath) return;
+    if (!repoPath || syncInFlight) return;
 
+    syncInFlight = true;
     if (showLoading) set({ loading: true, error: null });
     try {
       const [statusResult, branchesResult, logResult] = await Promise.allSettled([
@@ -88,6 +91,7 @@ export const useRepoStore = create<RepoStore>((set, get) => {
       const message = err instanceof Error ? err.message : String(err);
       set({ error: message });
     } finally {
+      syncInFlight = false;
       if (showLoading) set({ loading: false });
     }
   }

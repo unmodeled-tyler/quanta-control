@@ -21,6 +21,7 @@ const GIT_BASE = "/api/git";
 const REPO_BASE = "/api/repos";
 const SYSTEM_BASE = "/api/system";
 const AI_BASE = "/api/ai";
+const FEATURE_BASE = "/api";
 
 let cachedToken = "";
 
@@ -268,7 +269,7 @@ export function getSystemStatus() {
 }
 
 export function applyHunk(repo: string, diff: FileDiff, hunk: DiffHunk, reverse = false) {
-  return api<{ success: boolean }>("/api/apply-hunk", {
+  return api<{ success: boolean }>(`${FEATURE_BASE}/apply-hunk`, {
     method: "POST",
     body: JSON.stringify({
       repo,
@@ -284,25 +285,25 @@ export function applyHunk(repo: string, diff: FileDiff, hunk: DiffHunk, reverse 
 }
 
 export function getStashes(repo: string) {
-  return api<StashEntry[]>(`/api/stashes?repo=${encodeURIComponent(repo)}`);
+  return api<StashEntry[]>(`${FEATURE_BASE}/stashes?repo=${encodeURIComponent(repo)}`);
 }
 
 export function applyStash(repo: string, name: string) {
-  return api<{ success: boolean }>("/api/stash-apply", {
+  return api<{ success: boolean }>(`${FEATURE_BASE}/stash-apply`, {
     method: "POST",
     body: JSON.stringify({ repo, name }),
   });
 }
 
 export function popStash(repo: string, name: string) {
-  return api<{ success: boolean }>("/api/stash-pop", {
+  return api<{ success: boolean }>(`${FEATURE_BASE}/stash-pop`, {
     method: "POST",
     body: JSON.stringify({ repo, name }),
   });
 }
 
 export function dropStash(repo: string, name: string) {
-  return api<{ success: boolean }>("/api/stash-drop", {
+  return api<{ success: boolean }>(`${FEATURE_BASE}/stash-drop`, {
     method: "POST",
     body: JSON.stringify({ repo, name }),
   });

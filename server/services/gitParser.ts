@@ -12,15 +12,46 @@ import type {
 
 export const LOG_SEPARATOR = "|||QUANTA|||";
 
+type StatusMapping = { status: FileStatus; stagedStatus: StagedStatus };
+
+// Table-driven XY pair lookup: porcelain v1 index + working-tree status
+const STATUS_TABLE: Record<string, StatusMapping> = {
+  "?": { status: "untracked", stagedStatus: "unstaged" },
+  "!": { status: "untracked", stagedStatus: "unstaged" },
+  // Conflicted (any U in either column)
+  "U ": { status: "conflicted", stagedStatus: "partially_staged" },
+  " U": { status: "conflicted", stagedStatus: "partially_staged" },
+  UU:  { status: "conflicted", stagedStatus: "partially_staged" },
+};
+
+const X_STATUS: Record<string, FileStatus> = {
+  M: "modified", A: "added", D: "deleted", R: "renamed", C: "copied", U: "conflicted",
+};
+
+const Y_STATUS: Record<string, FileStatus> = {
+  M: "modified", A: "added", D: "deleted", U: "conflicted",
+};
+
+function resolveFileStatus(x: string, y: string): StatusMapping {
+  if (x === "?" && y === "?") return STATUS_TABLE["?"]!;
+  if (x === "U" || y === "U") return STATUS_TABLE["U "]!;
+
+  if (x !== " " && y !== " ") {
+    return { status: Y_STATUS[y] ?? "modified", stagedStatus: "partially_staged" };
+  }
+  if (x !== " ") {
+    return { status: X_STATUS[x] ?? "modified", stagedStatus: "staged" };
+  }
+  return { status: Y_STATUS[y] ?? "modified", stagedStatus: "unstaged" };
+}
+
 export function parseStatus(output: string): StatusResult {
   const files: GitFile[] = [];
   let branch = "";
   let ahead = 0;
   let behind = 0;
 
-  const lines = output.split("\n").filter(Boolean);
-
-  for (const line of lines) {
+  for (const line of output.split("\n").filter(Boolean)) {
     if (line.startsWith("## ")) {
       const header = line.slice(3);
       const branchMatch = header.match(
@@ -38,56 +69,24 @@ export function parseStatus(output: string): StatusResult {
 
     if (line.length < 4) continue;
 
+    let status: FileStatus;
+    let stagedStatus: StagedStatus;
+    let oldPath: string | undefined;
+    let filePath: string;
+
     const x = line[0] ?? " ";
     const y = line[1] ?? " ";
-    let filePath = line.slice(3);
+    const pathPart = line.slice(3);
 
-    let status: FileStatus = "modified";
-    let stagedStatus: StagedStatus = "unstaged";
-    let oldPath: string | undefined;
-
-    const fromMapping: Record<string, FileStatus> = {
-      "?": "untracked",
-      "!": "untracked",
-    };
-
-    const xMapping: Record<string, FileStatus> = {
-      M: "modified",
-      A: "added",
-      D: "deleted",
-      R: "renamed",
-      C: "copied",
-      U: "conflicted",
-    };
-
-    const yMapping: Record<string, FileStatus> = {
-      M: "modified",
-      A: "added",
-      D: "deleted",
-      U: "conflicted",
-    };
-
-    if (x === "?" && y === "?") {
-      status = "untracked";
-      stagedStatus = "unstaged";
-    } else if (x === "R" || x === "C") {
-      const parts = filePath.split(" -> ");
+    if (x === "R" || x === "C") {
+      const parts = pathPart.split(" -> ");
       oldPath = parts[0];
-      filePath = parts[1] ?? parts[0] ?? filePath;
-      status = xMapping[x] ?? "modified";
+      filePath = parts[1] ?? parts[0] ?? pathPart;
+      status = X_STATUS[x] ?? "modified";
       stagedStatus = y !== " " ? "partially_staged" : "staged";
-    } else if (x === "U" || y === "U") {
-      status = "conflicted";
-      stagedStatus = "partially_staged";
-    } else if (x !== " " && y !== " ") {
-      status = yMapping[y] ?? "modified";
-      stagedStatus = "partially_staged";
-    } else if (x !== " ") {
-      status = xMapping[x] ?? "modified";
-      stagedStatus = "staged";
     } else {
-      status = yMapping[y] ?? fromMapping[y] ?? "modified";
-      stagedStatus = "unstaged";
+      ({ status, stagedStatus } = resolveFileStatus(x, y));
+      filePath = pathPart;
     }
 
     files.push({

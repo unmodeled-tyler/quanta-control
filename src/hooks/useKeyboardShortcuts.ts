@@ -36,19 +36,17 @@ export function useKeyboardShortcuts({
     onConfirmDiscard,
   });
 
-  useEffect(() => {
-    metaRef.current = {
-      repoPath,
-      status,
-      view,
-      selectedFile,
-      settings,
-      refresh,
-      onViewChange,
-      onSelectFile,
-      onConfirmDiscard,
-    };
-  });
+  metaRef.current = {
+    repoPath,
+    status,
+    view,
+    selectedFile,
+    settings,
+    refresh,
+    onViewChange,
+    onSelectFile,
+    onConfirmDiscard,
+  };
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const target = e.target as HTMLElement;

@@ -36,16 +36,31 @@ const DEFAULTS: AppSettings = {
   aiCommitApiKey: "",
 };
 
+const SETTINGS_KEY = "quanta-settings";
+// API key stored separately from general settings so it's easier to audit
+// and clear independently. Still plaintext in localStorage — Electron apps
+// should prefer safeStorage via IPC when available.
+const API_KEY_KEY = "quanta-ai-api-key";
+
 function loadSettings(): AppSettings {
   try {
-    const stored = localStorage.getItem("quanta-settings");
-    if (stored) return { ...DEFAULTS, ...JSON.parse(stored) };
+    const stored = localStorage.getItem(SETTINGS_KEY);
+    const base = stored ? { ...DEFAULTS, ...JSON.parse(stored) } : { ...DEFAULTS };
+    const apiKey = localStorage.getItem(API_KEY_KEY);
+    if (apiKey) base.aiCommitApiKey = apiKey;
+    return base;
   } catch {}
   return { ...DEFAULTS };
 }
 
 function saveSettings(settings: AppSettings) {
-  localStorage.setItem("quanta-settings", JSON.stringify(settings));
+  const { aiCommitApiKey, ...rest } = settings;
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(rest));
+  if (aiCommitApiKey) {
+    localStorage.setItem(API_KEY_KEY, aiCommitApiKey);
+  } else {
+    localStorage.removeItem(API_KEY_KEY);
+  }
 }
 
 interface SettingsStore {

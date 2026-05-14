@@ -18,7 +18,6 @@ class RepoWatcherInstance {
       ignored: shouldIgnorePath,
       ignoreInitial: true,
       persistent: true,
-      depth: 12,
       awaitWriteFinish: { stabilityThreshold: 150, pollInterval: 100 },
     });
 

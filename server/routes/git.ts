@@ -477,7 +477,7 @@ router.post("/stash", async (req, res, next) => {
     const { repo, message, pop } = req.body;
     if (!repo) return res.status(400).json({ error: "repo path required" });
 
-    const args = pop ? ["stash", "pop"] : ["stash", "push"];
+    const args = pop ? ["stash", "pop"] : ["stash", "push", "--"];
     if (message && !pop) args.push("-m", message);
 
     const result = await gitInRepo(repo, args);
