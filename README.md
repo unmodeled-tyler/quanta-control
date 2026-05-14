@@ -22,6 +22,10 @@ Quanta Control is built around a few common Git workflows:
 - create commits and push them upstream
 - switch, create, and delete branches
 - inspect commit history
+- explore files, blame, search, tags, TODOs, and compare refs
+- visualize repo structure in an interactive dependency graph
+- manage stashes and guided rebases
+- review repository stats and local setup health
 - fetch, pull, and push remotes
 - verify local Git and GitHub readiness with a pre-flight checklist before opening a repo
 
@@ -70,6 +74,46 @@ If you already work with `git`, `gh`, SSH remotes, or HTTPS remotes locally, Qua
 - create new branches
 - delete branches
 - inspect recent commit history
+
+### Explorer workspace
+
+- browse the repository file tree
+- open files with blame and file history side panels
+- search code with grep-style results
+- run pickaxe searches to find when content was added or removed
+- compare two refs and inspect changed files
+- scan TODO-style comments across the repo
+- view, create, and delete tags
+
+### Neural graph visualizer
+
+- render an interactive deep-space dependency graph for the current repo
+- inspect file and symbol nodes with hover labels and a sidebar inspector
+- filter graph nodes by name or group
+- tune layout physics for charge, link distance, and simulation iterations
+- right-click graph nodes to open their backing file in the Explorer
+- use GitNexus data when available, with a local import-scan fallback for dependency edges
+
+### Stashes and rebase
+
+- view and apply local stashes
+- pop stashes back into the working tree
+- drop stashes you no longer need
+- build an interactive rebase plan from recent commits
+- reorder, squash, fix up, reword, or drop commits before starting the rebase
+
+### Repository stats
+
+- review the last 12 months of commit activity for your configured Git identity
+- use the stats view as a quick personal activity snapshot for the current repo
+
+### AI commit messages
+
+- optionally generate commit messages from the current diff
+- configure an OpenAI-compatible endpoint
+- set the model name and API key through local settings
+- test model availability from the settings screen
+- keep the feature disabled when you want a fully manual commit flow
 
 ### Pre-flight checklist
 
