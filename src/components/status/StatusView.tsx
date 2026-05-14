@@ -46,6 +46,7 @@ function FileItem({
 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [gitignoreError, setGitignoreError] = useState("");
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -55,11 +56,12 @@ function FileItem({
 
   const addPathToGitignore = useCallback(
     async (pattern: string) => {
+      setGitignoreError("");
       try {
         await api.addToGitignore(repoPath, [pattern]);
         await onAction();
       } catch (err) {
-        console.error("Failed to add to .gitignore:", err);
+        setGitignoreError(err instanceof Error ? err.message : "Failed to update .gitignore");
       }
     },
     [repoPath, onAction],
@@ -100,6 +102,11 @@ function FileItem({
 
   return (
     <>
+      {gitignoreError && (
+        <div className="px-3 py-1 text-xs text-red-400 bg-red-500/10 border-b border-red-500/20">
+          {gitignoreError}
+        </div>
+      )}
       <div
         onClick={() => onSelect(file)}
         onContextMenu={handleContextMenu}

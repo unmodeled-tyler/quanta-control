@@ -20,6 +20,7 @@ import type { SystemStatus } from "../types/system";
 const GIT_BASE = "/api/git";
 const REPO_BASE = "/api/repos";
 const SYSTEM_BASE = "/api/system";
+const AI_BASE = "/api/ai";
 
 let cachedToken = "";
 
@@ -119,7 +120,7 @@ export function generateCommitMessage(
     apiKey?: string;
   },
 ) {
-  return api<{ message: string }>(`${GIT_BASE}/generate-commit-message`, {
+  return api<{ message: string }>(`${AI_BASE}/generate-commit-message`, {
     method: "POST",
     body: JSON.stringify({ repo, ...options }),
   });
@@ -135,7 +136,7 @@ export function testAiEndpoint(options: {
     url: string;
     modelFound: boolean | null;
     modelCount: number;
-  }>(`${GIT_BASE}/test-ai-endpoint`, {
+  }>(`${AI_BASE}/test-ai-endpoint`, {
     method: "POST",
     body: JSON.stringify(options),
   });

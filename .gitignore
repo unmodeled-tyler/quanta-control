@@ -16,7 +16,3 @@ package-lock.json
 test-git.mjs
 *.tsbuildinfo
 .gitnexus
-CLAUDE.md
-AGENTS.md
-.gitignore
-package-lock.json

@@ -9,6 +9,7 @@ import repoRoutes from "./routes/repos.js";
 import systemRoutes from "./routes/system.js";
 import { featureRoutes } from "./routes/hunksAndStash.js";
 import explorerRoutes from "./routes/explorer.js";
+import aiRoutes from "./routes/ai.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -74,6 +75,7 @@ export function createApp() {
   app.use("/api/system", systemRoutes);
   app.use("/api", featureRoutes);
   app.use("/api/explorer", explorerRoutes);
+  app.use("/api/ai", aiRoutes);
 
   if (existsSync(clientDist)) {
     app.use(express.static(clientDist));

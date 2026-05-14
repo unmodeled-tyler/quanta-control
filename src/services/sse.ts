@@ -78,7 +78,9 @@ async function openConnection(repo: string, refresh: () => void) {
     }, delay);
   };
 
-  source.onopen = () => {};
+  source.onopen = () => {
+    reconnectAttempt = 0;
+  };
 }
 
 export function disconnectRepoEvents() {

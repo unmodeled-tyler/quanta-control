@@ -28,6 +28,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
   const [generatingMessage, setGeneratingMessage] = useState(false);
   const [spinnerFrame, setSpinnerFrame] = useState(0);
   const [generationError, setGenerationError] = useState("");
+  const [commitError, setCommitError] = useState("");
   const [pushDialog, setPushDialog] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [dontAskAgain, setDontAskAgain] = useState(false);
@@ -59,7 +60,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
       await api.push(repoPath);
       await useRepoStore.getState().refresh();
     } catch (err: unknown) {
-      console.error("Push failed:", err);
+      setCommitError(err instanceof Error ? err.message : "Push failed");
     } finally {
       setPushing(false);
       setPushDialog(false);
@@ -79,6 +80,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
     if (!repoPath || !status || !message.trim() || !hasChanges) return;
 
     setCommitting(true);
+    setCommitError("");
     try {
       if (!hasStaged) {
         await api.stageFiles(repoPath);
@@ -94,7 +96,7 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
         setPushDialog(true);
       }
     } catch (err) {
-      console.error("Commit failed:", err);
+      setCommitError(err instanceof Error ? err.message : "Commit failed");
     } finally {
       setCommitting(false);
     }
@@ -185,6 +187,9 @@ export function CommitPanel({ onCommitted }: { onCommitted: () => void }) {
         </div>
         {generationError && (
           <div className="mt-2 text-xs text-red-400">{generationError}</div>
+        )}
+        {commitError && (
+          <div className="mt-2 text-xs text-red-400">{commitError}</div>
         )}
       </div>
 

@@ -45,15 +45,17 @@ function HunkActions({
 }) {
   const repoPath = useRepoStore((s) => s.repoPath);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
   const handleStage = useCallback(async () => {
     if (!repoPath || busy) return;
     setBusy(true);
+    setError("");
     try {
       await applyHunk(repoPath, diff, hunk);
       onAction();
     } catch (err) {
-      console.error("Stage hunk failed:", err);
+      setError(err instanceof Error ? err.message : "Failed to stage hunk");
     } finally {
       setBusy(false);
     }
@@ -62,11 +64,12 @@ function HunkActions({
   const handleUnstage = useCallback(async () => {
     if (!repoPath || busy) return;
     setBusy(true);
+    setError("");
     try {
       await applyHunk(repoPath, diff, hunk, true);
       onAction();
     } catch (err) {
-      console.error("Unstage hunk failed:", err);
+      setError(err instanceof Error ? err.message : "Failed to unstage hunk");
     } finally {
       setBusy(false);
     }
@@ -74,6 +77,7 @@ function HunkActions({
 
   return (
     <div className="flex items-center gap-2">
+      {error && <span className="text-[10px] text-red-400">{error}</span>}
       <button
         onClick={handleStage}
         disabled={busy}
