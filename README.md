@@ -1,6 +1,8 @@
 
 # Quanta Control
 
+<img width="1920" height="993" alt="image" src="https://github.com/user-attachments/assets/452673df-b0a2-4f18-9960-5fc8eeb3070e" />
+
 <img width="1484" height="1004" alt="quanta-control-1" src="https://github.com/user-attachments/assets/bd9cf9c7-edf0-4326-a56f-ed17443770b5" />
 
 
