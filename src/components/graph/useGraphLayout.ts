@@ -12,6 +12,8 @@ export interface LayoutNode extends GraphNode {
   radius: number;
 }
 
+const layoutCache = new Map<string, LayoutNode[]>();
+
 function seededCoordinate(id: string, axis: number) {
   let hash = 2166136261 + axis * 1013904223;
   for (let i = 0; i < id.length; i++) {
@@ -33,6 +35,18 @@ export function useGraphLayout(
 ): LayoutNode[] {
   return useMemo(() => {
     if (nodes.length === 0) return [];
+
+    const layoutKey = [
+      options?.chargeStrength ?? -30,
+      options?.linkDistance ?? 5,
+      options?.centerStrength ?? 0.05,
+      options?.iterations ?? 300,
+      nodes.map((node) => `${node.id}:${node.importance ?? 1}:${node.position?.join(",") ?? ""}`).join("|"),
+      edges.map((edge) => `${edge.source}>${edge.target}:${edge.weight ?? 1}`).join("|"),
+    ].join("::");
+
+    const cachedLayout = layoutCache.get(layoutKey);
+    if (cachedLayout) return cachedLayout;
 
     const simulationNodes: LayoutNode[] = nodes.map((n) => ({
       ...n,
@@ -75,6 +89,7 @@ export function useGraphLayout(
       sim.tick();
     }
 
+    layoutCache.set(layoutKey, simulationNodes);
     return simulationNodes;
   }, [nodes, edges, options?.chargeStrength, options?.linkDistance, options?.centerStrength, options?.iterations]);
 }

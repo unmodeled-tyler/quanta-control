@@ -19,6 +19,8 @@ const GROUP_COLORS: Record<string, string> = {
   default: "#a1a1aa",
 };
 
+const graphDataCache = new Map<string, GraphData>();
+
 function colorizeNodes(nodes: GraphNode[]): GraphNode[] {
   return nodes.map((n) => {
     const group = n.group || "default";
@@ -30,8 +32,10 @@ function colorizeNodes(nodes: GraphNode[]): GraphNode[] {
 
 export function GraphView({ onNavigate }: { onNavigate?: (path: string) => void }) {
   const repoPath = useRepoStore((s) => s.repoPath);
-  const [data, setData] = useState<GraphData>({ nodes: [], edges: [], groups: [] });
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<GraphData>(() =>
+    repoPath ? graphDataCache.get(repoPath) ?? { nodes: [], edges: [], groups: [] } : { nodes: [], edges: [], groups: [] }
+  );
+  const [loading, setLoading] = useState(() => (repoPath ? !graphDataCache.has(repoPath) : false));
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -40,18 +44,36 @@ export function GraphView({ onNavigate }: { onNavigate?: (path: string) => void 
   const [iterations, setIterations] = useState(200);
 
   useEffect(() => {
-    if (!repoPath) return;
+    if (!repoPath) {
+      setData({ nodes: [], edges: [], groups: [] });
+      setLoading(false);
+      setError(null);
+      setSelectedId(null);
+      return;
+    }
+
+    const cachedData = graphDataCache.get(repoPath);
+    if (cachedData) {
+      setData(cachedData);
+      setLoading(false);
+      setError(null);
+      setSelectedId((current) => (current && cachedData.nodes.some((node) => node.id === current) ? current : null));
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(null);
     getDependencyGraph(repoPath)
       .then((res) => {
         if (cancelled) return;
-        setData({
+        const nextData = {
           nodes: colorizeNodes(res.nodes),
           edges: res.edges,
           groups: res.groups,
-        });
+        };
+        graphDataCache.set(repoPath, nextData);
+        setData(nextData);
         setSelectedId(null);
       })
       .catch((err) => {
